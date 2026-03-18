@@ -13,21 +13,10 @@ function addSoldier() {
   save(); renderAll();
 }
 
-function removeSoldier(sid) {
-  const s = state.soldiers.find(x => x.id === sid); if (!s) return;
-  document.getElementById('modal-h').textContent = '🗑 מחיקת לוחם';
-  document.getElementById('modal-txt').textContent = `למחוק את ${s.name} לצמיתות?`;
-  document.getElementById('modal-confirm').onclick = () => {
-    state.soldiers    = state.soldiers.filter(x => x.id !== sid);
-    state.assignments = state.assignments.filter(a => a.sid !== sid);
-    state.leaves      = state.leaves.filter(l => l.sid !== sid);
-    try {
-      let st = JSON.parse(localStorage.getItem('shabatzak_soldiers') || '[]');
-      localStorage.setItem('shabatzak_soldiers', JSON.stringify(st.filter(x => x.id !== sid)));
-    } catch(e) {}
-    save(); closeModal(); renderAll();
-  };
-  document.getElementById('overlay').classList.add('open');
+function unassignToFree(aid) {
+  // הסר משיבוץ — לוחם עובר לללא שיבוץ
+  state.assignments = state.assignments.filter(a => a.id !== aid);
+  save(); renderAll();
 }
 
 function openEditSoldier(sid) {
@@ -67,11 +56,6 @@ function assignSoldier() {
     state.history[s.name][role] = (state.history[s.name][role] || 0) + 1;
     state.history[s.name].total = (state.history[s.name].total || 0) + 1;
   }
-  save(); renderAll();
-}
-
-function removeAssignment(aid) {
-  state.assignments = state.assignments.filter(a => a.id !== aid);
   save(); renderAll();
 }
 
