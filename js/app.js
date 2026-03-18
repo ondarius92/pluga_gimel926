@@ -51,6 +51,7 @@ function assignSoldier() {
   const sid  = document.getElementById('in-soldier').value;
   const role = document.getElementById('in-pos').value;
   if (!sid) { alert('בחר לוחם'); return; }
+  if (!warnIfOut(sid, ROLE_LABEL[role])) return;
   pushUndo();
   state.assignments.push({ id: eid(), sid, role });
   const s = state.soldiers.find(x => x.id === sid);
@@ -84,26 +85,40 @@ function clearAll() {
 function onShagaChangeSafe(key, sel, dayIdx, isNight) {
   const prevVal = state.schedule[key] || '';
   const newVal  = sel.value;
+
+  // ידני — ללא אישור
   if (newVal === '__manual__') {
     state.schedule[key] = ''; save(); renderSchedInput();
     const inp = document.getElementById('mi_' + key);
     if (inp) inp.focus();
     return;
   }
+
+  // אותו ערך — כלום
   if (newVal === prevVal) return;
 
-  const s = newVal ? state.soldiers.find(x => x.id === newVal) : null;
-  const name = s ? s.name : '?';
-  const prevS = prevVal ? state.soldiers.find(x => x.id === prevVal) : null;
-  const prevName = prevS ? prevS.name : '—';
-
-  let msg = `לשנות משמרת ${key.replace('day_','יום ').replace('_shift_',' — משמרת ')}?\n`;
-  msg += `מ: ${prevName}\nל: ${name}`;
-
-  if (!confirm(msg)) {
-    sel.value = prevVal; return;
+  // ריקון שדה — ללא אישור
+  if (newVal === '') {
+    pushUndo();
+    state.schedule[key] = '';
+    save(); renderSchedInput();
+    return;
   }
 
+  // החלפה בין לוחמים — בקש אישור
+  if (prevVal !== '') {
+    const s = state.soldiers.find(x => x.id === newVal);
+    const prevS = state.soldiers.find(x => x.id === prevVal);
+    const name = s ? s.name : '?';
+    const prevName = prevS ? prevS.name : '—';
+    const shiftLabel = key.replace('day_','יום ').replace('_shift_',' משמרת ');
+    if (!confirm(`להחליף משמרת ${shiftLabel}?\nמ: ${prevName}\nל: ${name}`)) {
+      sel.value = prevVal; return;
+    }
+  }
+
+  // בדיקת יציאות
+  const s = newVal ? state.soldiers.find(x => x.id === newVal) : null;
   if (s && isNight && dayIdx !== undefined) {
     if (isLeavingMorning(s.id, dayIdx)) {
       if (!confirm('⚠️ לוחם זה יוצא הבוקר. לשבץ בכל זאת?')) {
