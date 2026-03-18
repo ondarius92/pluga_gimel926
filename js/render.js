@@ -65,9 +65,8 @@ function renderPosList() {
       <div class="pos-item-soldiers">`;
     m.forEach(mx => {
       html += `<div class="chip">${mx.s.name}
-        <span class="chip-edit" onclick="openEditSoldier('${mx.s.id}')">✏️</span>
-        <span class="chip-x" onclick="removeAssignment('${mx.aid}')">✕</span>
-        <span class="chip-del" onclick="removeSoldier('${mx.s.id}')">🗑</span>
+        <span class="chip-edit" onclick="openEditSoldier('${mx.s.id}')" title="ערוך">✏️</span>
+        <span class="chip-x" onclick="unassignToFree('${mx.aid}')" title="הסר לללא שיבוץ">✕</span>
       </div>`;
     });
     html += '</div></div>';
@@ -80,8 +79,7 @@ function renderPosList() {
       <div class="pos-item-soldiers">`;
     free.forEach(s => {
       html += `<div class="chip" style="background:#e0e0e0">${s.name}
-        <span class="chip-edit" onclick="openEditSoldier('${s.id}')">✏️</span>
-        <span class="chip-x" onclick="removeSoldier('${s.id}')">✕</span>
+        <span class="chip-edit" onclick="openEditSoldier('${s.id}')" title="ערוך">✏️</span>
       </div>`;
     });
     html += '</div></div>';
@@ -262,4 +260,106 @@ function renderOutput() {
   }
 
   grid.innerHTML = html || '<div style="color:#aaa;padding:30px;text-align:center;grid-column:1/-1;font-size:14px">הוסף לוחמים ושבץ אותם — הטבלאות יופיעו כאן</div>';
+}
+
+// ── תצוגה מקדימה 36 שעות ──
+function openPreview() {
+  const now = new Date();
+  const TASK_COLORS = {
+    shaga:   '#1a5a8a',
+    hafkmap: '#4527a0',
+    hamal:   '#6a1b9a',
+    hafk1:   '#c55a00',
+    hafk2:   '#880e4f',
+    hafk3:   '#2e7d32',
+    tour:    '#00796b'
+  };
+
+  // בנה לוח 36 שעות
+  let rows = '';
+  for (let h = 0; h < 36; h += 2) {
+    const slotTime = new Date(now);
+    slotTime.setMinutes(0,0,0);
+    slotTime.setHours(slotTime.getHours() + h);
+    const label = `${String(slotTime.getHours()).padStart(2,'0')}:00`;
+    const dayLabel = DAY_NAMES[slotTime.getDay()];
+
+    // מצא ש"ג
+    const schedStart = new Date(); schedStart.setHours(0,0,0,0);
+    const diffH = (slotTime - schedStart) / 3600000;
+    const dayIdx = Math.floor(diffH / 24);
+    const shiftIdx = SHAGA_SHIFTS.findIndex(s => s.h === slotTime.getHours());
+    let shagaName = '—';
+    if (shiftIdx >= 0) {
+      const key = `day_${dayIdx}_shift_${shiftIdx}`;
+      const sid = state.schedule[key];
+      const sol = sid ? state.soldiers.find(x => x.id === sid) : null;
+      shagaName = sol ? sol.name : '—';
+    }
+
+    // מצא סיור
+    let tourName = '—';
+    const tourKey1 = `day_${dayIdx}_t1`;
+    const tourKey2 = `day_${dayIdx}_t2`;
+    const tourH = slotTime.getHours();
+    const tourKey = (tourH >= 10 && tourH < 22) ? tourKey1 : tourKey2;
+    const tourVal = state.schedule[tourKey];
+    if (tourVal) tourName = hafkLabel(tourVal);
+
+    // חמ"ל
+    const hamalSoldiers = state.assignments
+      .filter(a => a.role === 'hamal')
+      .map(a => state.soldiers.find(x => x.id === a.sid))
+      .filter(Boolean)
+      .map(s => s.name).join(', ') || '—';
+
+    // חפ"ק מ"פ
+    const hafkmapSoldiers = state.assignments
+      .filter(a => a.role === 'hafkmap')
+      .map(a => state.soldiers.find(x => x.id === a.sid))
+      .filter(Boolean)
+      .map(s => s.name).join(', ') || '—';
+
+    rows += `<tr>
+      <td style="font-size:11px;color:#555;white-space:nowrap;padding:4px 8px">${dayLabel}<br><strong>${label}</strong></td>
+      <td style="padding:4px 8px"><span style="background:${TASK_COLORS.shaga};color:#fff;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700">${shagaName}</span></td>
+      <td style="padding:4px 8px"><span style="background:${TASK_COLORS.tour};color:#fff;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700">${tourName}</span></td>
+      <td style="padding:4px 8px;font-size:11px;color:#333">${hamalSoldiers}</td>
+      <td style="padding:4px 8px;font-size:11px;color:#333">${hafkmapSoldiers}</td>
+    </tr>`;
+  }
+
+  const html = `
+    <div id="preview-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto" onclick="if(event.target===this)closePreview()">
+      <div style="background:#fff;border-radius:12px;width:100%;max-width:750px;overflow:hidden;margin:auto">
+        <div style="background:#1a3a5c;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+          <h2 style="color:#fff;font-size:15px;font-weight:700">👁 תצוגה מקדימה — 36 שעות קדימה</h2>
+          <button onclick="closePreview()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px">✕ סגור</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif">
+            <thead>
+              <tr style="background:#f0f4f8">
+                <th style="padding:8px;text-align:right;font-size:12px;color:#555">שעה</th>
+                <th style="padding:8px;text-align:right;font-size:12px;background:#e3f0fb;color:#1a5a8a">🔵 ש"ג</th>
+                <th style="padding:8px;text-align:right;font-size:12px;background:#e8f5e9;color:#00796b">🟢 ק. מלאכי</th>
+                <th style="padding:8px;text-align:right;font-size:12px;background:#f3e5f5;color:#6a1b9a">🟤 חמ"ל</th>
+                <th style="padding:8px;text-align:right;font-size:12px;background:#ede7f6;color:#4527a0">🟣 חפ"ק מ"פ</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+
+  const div = document.createElement('div');
+  div.id = 'preview-wrapper';
+  div.innerHTML = html;
+  document.body.appendChild(div);
+}
+
+function closePreview() {
+  const el = document.getElementById('preview-wrapper');
+  if (el) el.remove();
 }
