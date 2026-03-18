@@ -14,7 +14,7 @@ const DEFAULT_SOLDIERS = [
   {id:'ds11', name:'שחף',         rank:''},
   {id:'ds12', name:'דודו אבני',   rank:''},
   {id:'ds13', name:'רפי',         rank:''},
-  {id:'ds58', name:'מצווה', rank:''},
+  {id:'ds58', name:'מצווה',       rank:''},
   // חמ"ל
   {id:'ds14', name:'און',         rank:''},
   {id:'ds15', name:'בתאל',        rank:''},
@@ -36,68 +36,4 @@ const DEFAULT_SOLDIERS = [
   {id:'ds31', name:'דולב',        rank:'מ"מ 3'},
   {id:'ds32', name:'עידו צחורי',  rank:'סמל 3'},
   {id:'ds33', name:'רוני',        rank:'חובשת 3'},
-  {id:'ds34', name:'דימה',        rank:'מהנדס 3'},
-  {id:'ds35', name:'יפעת',        rank:'חובשת'},
-  {id:'ds36', name:'מירי',        rank:''},
-  // חפ"ק מפ
-  {id:'ds51', name:'אורן',        rank:'מ"פ'},
-  {id:'ds52', name:'שרית',        rank:'סמ"פ'},
-  {id:'ds53', name:'עידו דורה',   rank:'אנכלוסייה מ"פ'},
-  {id:'ds54', name:'ליה',         rank:''},
-  {id:'ds55', name:'אסי',         rank:''},
-  {id:'ds56', name:'חביש',        rank:''},
-  // חמ"ל קצין
-  {id:'ds41', name:'שלמה עלמה',   rank:'קצין'},
-  // נהג משאית
-  {id:'ds42', name:'אבי',         rank:''},
-  // רופא פלוגתי
-  {id:'ds43', name:'פרננדו',      rank:'רופא'},
-  // בבית
-  {id:'ds44', name:'טליה',        rank:''}
-];
-
-const DEFAULT_ASSIGNMENTS = [
-  {name:'אלונה',       role:'maplag'},
-  {name:'יבגני',       role:'maplag'},
-  {name:'חי',          role:'shaga'},
-  {name:'ליאם',        role:'shaga'},
-  {name:'צוף',         role:'shaga'},
-  {name:'לירן',        role:'shaga'},
-  {name:'גלעד',        role:'shaga'},
-  {name:'דור בן איטח', role:'shaga'},
-  {name:'לידור',       role:'shaga'},
-  {name:'שחר ר',       role:'shaga'},
-  {name:'שחף',         role:'shaga'},
-  {name:'דודו אבני',   role:'shaga'},
-  {name:'רפי',         role:'shaga'},
-  {name:'תומר',        role:'hafk1'},
-  {name:'שחר',         role:'hafk1'},
-  {name:'גיא זוהר',    role:'hafk1'},
-  {name:'נאור',        role:'hafk1'},
-  {name:'דניאל לוי',   role:'hafk1'},
-  {name:'מעיין',       role:'hafk2'},
-  {name:'רומי',        role:'hafk2'},
-  {name:'דודי מור',    role:'hafk2'},
-  {name:'עידו ברזילי', role:'hafk2'},
-  {name:'יאן',         role:'hafk2'},
-  {name:'דולב',        role:'hafk3'},
-  {name:'עידו צחורי',  role:'hafk3'},
-  {name:'רוני',        role:'hafk3'},
-  {name:'דימה',        role:'hafk3'},
-  {name:'יפעת',        role:'hafk3'},
-  {name:'מירי',        role:'hafk3'},
-  {name:'אורן',        role:'hafkmap'},
-  {name:'שרית',        role:'hafkmap'},
-  {name:'עידו דורה',   role:'hafkmap'},
-  {name:'ליה',         role:'hafkmap'},
-  {name:'אסי',         role:'hafkmap'},
-  {name:'חביש',        role:'hafkmap'},
-  {name:'און',         role:'hamal'},
-  {name:'בתאל',        role:'hamal'},
-  {name:'נתן',         role:'hamal'},
-  {name:'דורון',       role:'hamal'},
-  {name:'שלמה עלמה',   role:'hamal'},
-  {name:'אבי',         role:'truck'},
-  {name:'פרננדו',      role:'doctor'},
-  {name:'טליה',        role:'home'}
-];
+  {id:'ds34', name:'דימה',        rank:'מ
