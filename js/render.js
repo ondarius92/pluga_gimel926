@@ -78,7 +78,8 @@ function renderPosList() {
     m.forEach(mx => {
       html += `<div class="chip">${mx.s.name}
         <span class="chip-edit" onclick="openEditSoldier('${mx.s.id}')" title="ערוך">✏️</span>
-        <span class="chip-x" onclick="unassignToFree('${mx.aid}')" title="הסר">✕</span>
+        <span class="chip-x" onclick="unassignToFree('${mx.aid}')" title="הסר ממשימה">✕</span>
+        <span class="chip-del" onclick="removeSoldier('${mx.s.id}')" title="הסר מהפלוגה">🗑</span>
       </div>`;
     });
     html += '</div></div>';
@@ -92,6 +93,7 @@ function renderPosList() {
     free.forEach(s => {
       html += `<div class="chip" style="background:#e0e0e0">${s.name}
         <span class="chip-edit" onclick="openEditSoldier('${s.id}')" title="ערוך">✏️</span>
+        <span class="chip-x" onclick="removeSoldier('${s.id}')" title="הסר מהפלוגה">🗑</span>
       </div>`;
     });
     html += '</div></div>';
@@ -146,19 +148,18 @@ function renderSchedInput() {
       html += '</div></div>';
     });
 
-    // סיורים — 4 שורות: מלאכי יום/לילה + גת יום/לילה
-    const tourRows = [
+    const tourSlots = [
       { key:`day_${d}_t1`, label:'🟣 ק. מלאכי יום 10:00–22:00',  color:'#4527a0' },
       { key:`day_${d}_t2`, label:'🟣 ק. מלאכי לילה 22:00–10:00', color:'#4527a0' },
       { key:`day_${d}_t3`, label:'🔵 ק. גת יום 10:00–22:00',      color:'#1a5a8a' },
       { key:`day_${d}_t4`, label:'🔵 ק. גת לילה 22:00–10:00',     color:'#1a5a8a' }
     ];
-    tourRows.forEach(tr => {
-      const val = state.schedule[tr.key] || '';
+    tourSlots.forEach(ts => {
+      const val = state.schedule[ts.key] || '';
       html += `<div class="sched-input-row tour-row">
-        <span class="time-lbl" style="color:${tr.color};min-width:140px">${tr.label}</span>
+        <span class="time-lbl" style="color:${ts.color};min-width:140px">${ts.label}</span>
         <select style="margin-bottom:0;padding:2px 5px;font-size:11px;flex:1"
-          onchange="state.schedule['${tr.key}']=this.value;save();renderOutput()">`;
+          onchange="state.schedule['${ts.key}']=this.value;save();renderOutput()">`;
       TOUR_OPT.forEach(opt => { html += `<option value="${opt.v}"${val === opt.v ? ' selected' : ''}>${opt.l}</option>`; });
       html += '</select></div>';
     });
@@ -166,7 +167,6 @@ function renderSchedInput() {
   body.innerHTML = html || '<div style="font-size:11px;color:#aaa">שבץ לוחמים לש"ג תחילה</div>';
 }
 
-// ── עזר: סטטוס יציאות ──
 function getHomeStatus() {
   const now  = new Date();
   const soon = new Date(now.getTime() + 48 * 3600000);
@@ -183,22 +183,16 @@ function getHomeStatus() {
 
 function warnIfOut(sid, roleName) {
   const now = new Date();
-  const leave = state.leaves.find(l =>
-    l.sid === sid && new Date(l.outDate) <= now && new Date(l.backDate) > now
-  );
+  const leave = state.leaves.find(l => l.sid === sid && new Date(l.outDate) <= now && new Date(l.backDate) > now);
   if (leave) {
     const s = state.soldiers.find(x => x.id === sid);
-    const back = formatDT(leave.backDate);
-    return confirm(`⚠️ ${s?s.name:'?'} נמצא בבית!\nחזרה: ${back}\nלשבץ ל${roleName} בכל זאת?`);
+    return confirm(`⚠️ ${s?s.name:'?'} בבית!\nחזרה: ${formatDT(leave.backDate)}\nלשבץ ל${roleName} בכל זאת?`);
   }
   const soon = new Date(now.getTime() + 48 * 3600000);
-  const soonLeave = state.leaves.find(l =>
-    l.sid === sid && new Date(l.outDate) > now && new Date(l.outDate) <= soon
-  );
+  const soonLeave = state.leaves.find(l => l.sid === sid && new Date(l.outDate) > now && new Date(l.outDate) <= soon);
   if (soonLeave) {
     const s = state.soldiers.find(x => x.id === sid);
-    const outTime = formatDT(soonLeave.outDate);
-    if (!confirm(`⏳ ${s?s.name:'?'} עתיד לצאת ב-${outTime}\nלשבץ ל${roleName} בכל זאת?`)) return false;
+    if (!confirm(`⏳ ${s?s.name:'?'} יוצא ב-${formatDT(soonLeave.outDate)}\nלשבץ ל${roleName} בכל זאת?`)) return false;
   }
   return true;
 }
@@ -237,17 +231,11 @@ function renderOutput() {
       const manualSids = new Set(manualHome.map(x => x.s.id));
       const autoOut = [];
       currentlyOut.forEach(sid => {
-        if (!manualSids.has(sid)) {
-          const s = state.soldiers.find(x => x.id === sid);
-          if (s) autoOut.push(s);
-        }
+        if (!manualSids.has(sid)) { const s = state.soldiers.find(x => x.id === sid); if (s) autoOut.push(s); }
       });
       const autoSoon = [];
       goingHomeSoon.forEach(sid => {
-        if (!manualSids.has(sid) && !currentlyOut.has(sid)) {
-          const s = state.soldiers.find(x => x.id === sid);
-          if (s) autoSoon.push(s);
-        }
+        if (!manualSids.has(sid) && !currentlyOut.has(sid)) { const s = state.soldiers.find(x => x.id === sid); if (s) autoSoon.push(s); }
       });
       const total = manualHome.length + autoOut.length + autoSoon.length;
       if (!total) return;
@@ -264,18 +252,16 @@ function renderOutput() {
       });
       autoOut.forEach(s => {
         const leave = state.leaves.find(l => l.sid === s.id && new Date(l.outDate) <= new Date() && new Date(l.backDate) > new Date());
-        const backStr = leave ? 'חזרה: ' + formatDT(leave.backDate) : '';
         html += `<tr><td class="num">${idx++}</td><td class="rnk">${s.rank||''}</td>
           <td class="nm" style="color:#e65100">🚶 ${s.name}
-            <span style="font-size:9px;font-weight:400;color:#888;margin-right:4px">${backStr}</span>
+            <span style="font-size:9px;font-weight:400;color:#888;margin-right:4px">${leave?'חזרה: '+formatDT(leave.backDate):''}</span>
           </td></tr>`;
       });
       autoSoon.forEach(s => {
         const leave = state.leaves.find(l => l.sid === s.id && new Date(l.outDate) > new Date() && new Date(l.outDate) <= new Date(new Date().getTime()+48*3600000));
-        const outStr = leave ? 'יוצא: ' + formatDT(leave.outDate) : '';
         html += `<tr><td class="num">${idx++}</td><td class="rnk">${s.rank||''}</td>
           <td class="nm" style="color:#0288d1">⏳ ${s.name}
-            <span style="font-size:9px;font-weight:400;color:#0288d1;margin-right:4px">${outStr}</span>
+            <span style="font-size:9px;font-weight:400;color:#0288d1;margin-right:4px">${leave?'יוצא: '+formatDT(leave.outDate):''}</span>
           </td></tr>`;
       });
       html += '</tbody></table></div>';
@@ -316,7 +302,6 @@ function renderOutput() {
     html += '</tbody></table></div>';
   }
 
-  // לוז ש"ג וסיורים
   const shagaSols = getShagaSoldiers();
   if (shagaSols.length) {
     html += `<div class="out-card-wide">
@@ -339,28 +324,37 @@ function renderOutput() {
       html += '</tr>';
     });
 
-    // 4 שורות סיורים
     const tourRows = [
-      { keys: TOUR_KEYS.slice(0,2), labels: ['🟣 ק. מלאכי יום','🟣 ק. מלאכי לילה'], color:'#4527a0' },
-      { keys: TOUR_KEYS.slice(2,4), labels: ['🔵 ק. גת יום',    '🔵 ק. גת לילה'],    color:'#1a5a8a' }
+      { keys: ['t1'], label: '🟣 ק. מלאכי יום',  color: '#4527a0', bg: '#f0e8ff' },
+      { keys: ['t2'], label: '🟣 ק. מלאכי לילה', color: '#4527a0', bg: '#e8e0ff' },
+      { keys: ['t3'], label: '🔵 ק. גת יום',      color: '#1a5a8a', bg: '#e8f0fb' },
+      { keys: ['t4'], label: '🔵 ק. גת לילה',     color: '#1a5a8a', bg: '#d8e8f8' }
     ];
-    tourRows.forEach(group => {
-      group.keys.forEach((tk, ti) => {
-        html += '<tr class="tour-row">';
-        for (let d4 = 0; d4 < days; d4++) {
-          const key = `day_${d4}_${tk}`;
-          const val = state.schedule[key] || '';
-          const members = val ? state.assignments
+
+    tourRows.forEach(tr => {
+      html += `<tr style="background:${tr.bg}">`;
+      for (let d4 = 0; d4 < days; d4++) {
+        const key = `day_${d4}_${tr.keys[0]}`;
+        const val = state.schedule[key] || '';
+        const label = val ? hafkLabel(val) : '<span style="color:#ccc">—</span>';
+        let members = '';
+        if (val) {
+          members = state.assignments
             .filter(a => a.role === val)
             .map(a => state.soldiers.find(x => x.id === a.sid))
-            .filter(Boolean).map(s => s.name).join(', ') : '';
-          html += `<td style="color:${group.color};font-weight:700;white-space:nowrap">${group.labels[ti]}</td>
-            <td style="font-weight:700">
-              ${val ? `<span style="color:${group.color}">${hafkLabel(val)}</span>${members ? `<br><span style="font-size:9px;color:#666;font-weight:400">${members}</span>` : ''}` : '<span style="color:#ccc">—</span>'}
-            </td>`;
+            .filter(Boolean)
+            .filter(s => {
+              const sr = ['קצין','מפקד','מ"מ','סמל','סמלת','מ"פ','סמ"פ','רס"פ','סרס"פ','רופא'];
+              return !(s.rank && sr.some(r => s.rank.includes(r)));
+            })
+            .map(s => s.name).join(', ');
         }
-        html += '</tr>';
-      });
+        html += `<td style="color:${tr.color};font-weight:700;white-space:nowrap;font-size:10px">${tr.label}</td>
+          <td style="font-weight:700;font-size:11px">
+            ${val ? `<div style="color:${tr.color}">${label}</div><div style="font-size:9px;color:#666;font-weight:400">${members}</div>` : '<span style="color:#ccc">—</span>'}
+          </td>`;
+      }
+      html += '</tr>';
     });
 
     html += '</tbody></table></div></div>';
@@ -401,7 +395,6 @@ function renderOutput() {
   grid.innerHTML = html || '<div style="color:#aaa;padding:30px;text-align:center;grid-column:1/-1;font-size:14px">הוסף לוחמים ושבץ אותם — הטבלאות יופיעו כאן</div>';
 }
 
-// ── תצוגה מקדימה ──
 function openPreview() {
   const days = parseInt(document.getElementById('sched-days').value) || 2;
   const PREVIEW_ROLES = ['hafk1','hafk2','hafk3','hafkmap','hamal','truck','camp','rescue','konanut','other'];
@@ -467,59 +460,58 @@ function openPreview() {
       const key = `day_${d}_shift_${si}`;
       const val = state.schedule[key] || '';
       const sol = state.soldiers.find(x => x.id === val);
-      const display = sol ? sol.name : (val || '—');
       const isNight = shift.isNight;
       shagaHtml += `<tr style="background:${isNight?'#f0f0ff':'#fff'};border-bottom:1px solid #d8eaf5">
         <td style="padding:4px 8px;font-size:10px;color:#555">${DAY_NAMES[slotTime.getDay()]}</td>
         <td style="padding:4px 8px;font-size:10px;color:#1a5a8a;white-space:nowrap">${shift.label}${isNight?' 🌙':''}</td>
-        <td style="padding:4px 8px;font-size:11px;font-weight:700;color:${isNight?'#4527a0':'#000'}">${display}</td>
+        <td style="padding:4px 8px;font-size:11px;font-weight:700;color:${isNight?'#4527a0':'#000'}">${sol?sol.name:(val||'—')}</td>
       </tr>`;
       slotsShown++;
     }
   }
   shagaHtml += '</tbody></table></div>';
 
-  // סיורים — מלאכי + גת
-  const tourSections = [
-    { title:'🟣 חפ"ק ק. מלאכי', color:'#4527a0', keys:['t1','t2'], labels:['יום 10:00–22:00','לילה 22:00–10:00'] },
-    { title:'🔵 חפ"ק ק. גת',    color:'#1a5a8a', keys:['t3','t4'], labels:['יום 10:00–22:00','לילה 22:00–10:00'] }
+  let tourHtml = `<div style="border-radius:8px;overflow:hidden;border:2px solid #4527a0;margin-bottom:14px">
+    <div style="background:#4527a0;padding:6px 12px;font-size:12px;font-weight:700;color:#fff">🟣🔵 לוז סיורים — ${days} ימים</div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;background:#fff">
+      <thead><tr style="background:#ede7f6">
+        <th style="padding:5px 8px;font-size:10px;color:#333;text-align:right">סיור</th>`;
+  for (let d = 0; d < days; d++) tourHtml += `<th style="padding:5px 8px;font-size:10px;color:#333;text-align:center">${DAY_NAMES[d%7]}</th>`;
+  tourHtml += '</tr></thead><tbody>';
+
+  const previewTourRows = [
+    { key:'t1', label:'🟣 ק. מלאכי יום',  color:'#4527a0', bg:'#f0e8ff' },
+    { key:'t2', label:'🟣 ק. מלאכי לילה', color:'#4527a0', bg:'#e8e0ff' },
+    { key:'t3', label:'🔵 ק. גת יום',      color:'#1a5a8a', bg:'#e8f0fb' },
+    { key:'t4', label:'🔵 ק. גת לילה',     color:'#1a5a8a', bg:'#d8e8f8' }
   ];
-
-  let tourHtml = '';
-  tourSections.forEach(sec => {
-    tourHtml += `<div style="border-radius:8px;overflow:hidden;border:2px solid ${sec.color};margin-bottom:14px">
-      <div style="background:${sec.color};padding:6px 12px;font-size:12px;font-weight:700;color:#fff">${sec.title} — ${days} ימים</div>
-      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;background:#fff">
-        <thead><tr style="background:${sec.color}22">
-          <th style="padding:5px 8px;font-size:10px;color:${sec.color};text-align:right">משמרת</th>`;
-    for (let d = 0; d < days; d++) tourHtml += `<th style="padding:5px 8px;font-size:10px;color:${sec.color};text-align:center">${DAY_NAMES[d%7]}</th>`;
-    tourHtml += '</tr></thead><tbody>';
-
-    sec.keys.forEach((tk, ti) => {
-      tourHtml += `<tr style="background:${ti===0?'#fff':'#f8f8ff'}">
-        <td style="padding:5px 8px;font-size:10px;font-weight:700;color:${sec.color};white-space:nowrap;border-bottom:1px solid #eee">${sec.labels[ti]}</td>`;
-      for (let d = 0; d < days; d++) {
-        const key = `day_${d}_${tk}`;
-        const tourVal = state.schedule[key] || '';
-        const tourLabel = tourVal ? hafkLabel(tourVal) : '—';
-        let memberNames = '';
-        if (tourVal) {
-          memberNames = state.assignments
-            .filter(a => a.role === tourVal)
-            .map(a => state.soldiers.find(x => x.id === a.sid))
-            .filter(Boolean).map(s => s.name).join(', ');
-        }
-        tourHtml += `<td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:center">
-          ${tourVal
-            ? `<div style="font-weight:700;font-size:11px;color:${sec.color}">${tourLabel}</div>
-               <div style="font-size:9px;color:#666;margin-top:2px">${memberNames}</div>`
-            : '<span style="color:#ccc">—</span>'}
-        </td>`;
+  previewTourRows.forEach(tr => {
+    tourHtml += `<tr style="background:${tr.bg}">
+      <td style="padding:5px 8px;font-size:10px;font-weight:700;color:${tr.color};white-space:nowrap;border-bottom:1px solid #e0d8f5">${tr.label}</td>`;
+    for (let d = 0; d < days; d++) {
+      const key = `day_${d}_${tr.key}`;
+      const val = state.schedule[key] || '';
+      const label = val ? hafkLabel(val) : '—';
+      let members = '';
+      if (val) {
+        const sr = ['קצין','מפקד','מ"מ','סמל','סמלת','מ"פ','סמ"פ','רס"פ','סרס"פ','רופא'];
+        members = state.assignments
+          .filter(a => a.role === val)
+          .map(a => state.soldiers.find(x => x.id === a.sid))
+          .filter(Boolean)
+          .filter(s => !(s.rank && sr.some(r => s.rank.includes(r))))
+          .map(s => s.name).join(', ');
       }
-      tourHtml += '</tr>';
-    });
-    tourHtml += '</tbody></table></div></div>';
+      tourHtml += `<td style="padding:5px 8px;border-bottom:1px solid #e0d8f5;text-align:center">
+        ${val
+          ? `<div style="font-weight:700;font-size:11px;color:${tr.color}">${label}</div>
+             <div style="font-size:9px;color:#666;margin-top:2px">${members}</div>`
+          : '<span style="color:#ccc">—</span>'}
+      </td>`;
+    }
+    tourHtml += '</tr>';
   });
+  tourHtml += '</tbody></table></div></div>';
 
   const wrapper = document.createElement('div');
   wrapper.id = 'preview-wrapper';
