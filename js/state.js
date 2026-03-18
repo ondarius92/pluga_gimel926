@@ -20,16 +20,16 @@ function initFirebase() {
     firebaseReady = true;
 
     db.ref('shabatzak/state').on('value', (snapshot) => {
-  const remote = snapshot.val();
-  if (!remote) return;
-  // עדכן תמיד אם השינוי לא שלנו
-  if (remote._ts && remote._ts !== state._ts) {
-    state = remote;
-    fixState();
-    renderAll();
-    showSync('✅ מסונכרן');
-  }
-});
+      const remote = snapshot.val();
+      if (!remote) return;
+      if (remote._ts && remote._ts !== state._ts) {
+        state = remote;
+        fixState();
+        renderAll();
+        showSync('✅ מסונכרן');
+      }
+    });
+
     showSync('🔥 מחובר');
   } catch(e) {
     console.warn('Firebase error:', e);
@@ -43,7 +43,6 @@ function showSync(msg) {
 }
 
 // ── STATE ──
-
 let state = {
   soldiers: [],
   assignments: [],
@@ -54,7 +53,7 @@ let state = {
   _ts: 0
 };
 
-// ── UNDO HISTORY ──
+// ── UNDO ──
 const MAX_UNDO = 20;
 let undoStack = [];
 
@@ -89,18 +88,13 @@ let _ec = 1;
 function eid() { return 'e' + (++_ec) + Date.now(); }
 
 // ── LOAD ──
-
 function loadState() {
-  // נסה URL hash
   try {
     const h = window.location.hash.slice(1);
     if (h) {
       const d = JSON.parse(decodeURIComponent(atob(h)));
       if (d && d.soldiers && d.soldiers.length) {
-        state = d;
-        fixState();
-        mergeDefaults();
-        save();
+        state = d; fixState(); mergeDefaults(); save();
         window.location.hash = '';
         showSync('✅ נטען מקישור!');
         return;
@@ -108,7 +102,6 @@ function loadState() {
     }
   } catch(e) {}
 
-  // נסה localStorage
   try {
     const raw = localStorage.getItem('shabatzak12');
     if (raw) {
@@ -133,8 +126,16 @@ function fixState() {
   if (!state._ts)         state._ts         = 0;
   _ec = (state.assignments || []).length + 2;
 
-  // Migration
+  // Migration: איבגני → יבגני
   state.soldiers.forEach(s => {
+    if (s.name === 'איבגני') {
+      if (state.history[s.name]) {
+        state.history['יבגני'] = state.history[s.name];
+        delete state.history[s.name];
+      }
+      s.name = 'יבגני';
+    }
+    // Migration: דניאל (חופלת) → דניאל לוי
     if (s.name === 'דניאל' && s.rank === 'חופלת') {
       if (state.history[s.name]) {
         state.history['דניאל לוי'] = state.history[s.name];
@@ -179,8 +180,6 @@ function ensureHist(name) {
   if (!state.history[name]) state.history[name] = { total: 0, shagaShifts: 0 };
 }
 
-// ── SAVE ──
-
 function save() {
   state._ts = Date.now();
   try { localStorage.setItem('shabatzak12', JSON.stringify(state)); } catch(e) {}
@@ -198,13 +197,8 @@ function save() {
     }, 1000);
   }
 }
+
 function forceSave() {
   save();
   showSync('✅ נשמר!');
-  alert('השינויים נשמרו ועודכנו לכולם.');
-}
-// save עם undo
-function saveWithUndo() {
-  pushUndo();
-  save();
 }
