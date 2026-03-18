@@ -3,11 +3,13 @@
 function addSoldier() {
   const name = document.getElementById('in-name').value.trim(); if (!name) return;
   const rank = document.getElementById('in-rank').value.trim();
-  if (BANNED_NAMES.includes(name)) { alert('לוחם זה הוסר לצמיתות.'); return; }
   if (state.soldiers.find(s => s.name === name)) { alert('לוחם בשם זה כבר קיים.'); return; }
   pushUndo();
-  state.soldiers.push({ id: String(Date.now()), name, rank });
+  const newId = String(Date.now());
+  state.soldiers.push({ id: newId, name, rank });
   ensureHist(name);
+  // הסר מרשימת המוסרים אם היה שם
+  if (state.removedIds) state.removedIds = state.removedIds.filter(id => id !== newId);
   document.getElementById('in-name').value = '';
   document.getElementById('in-rank').value = '';
   document.getElementById('in-name').focus();
@@ -17,9 +19,12 @@ function addSoldier() {
 function removeSoldier(sid) {
   const s = state.soldiers.find(x => x.id === sid); if (!s) return;
   document.getElementById('modal-h').textContent = '🗑 הסרת לוחם';
-  document.getElementById('modal-txt').textContent = `להסיר את ${s.name} מהמצבת? ניתן להוסיפו מחדש בכל עת.`;
+  document.getElementById('modal-txt').textContent = `להסיר את ${s.name} מהשבצ"כ? אם יחזור — ניתן להוסיפו מחדש.`;
   document.getElementById('modal-confirm').onclick = () => {
     pushUndo();
+    // שמור את ה-ID ברשימת המוסרים כדי שלא יחזור מ-DEFAULT_SOLDIERS
+    if (!state.removedIds) state.removedIds = [];
+    if (!state.removedIds.includes(sid)) state.removedIds.push(sid);
     state.soldiers    = state.soldiers.filter(x => x.id !== sid);
     state.assignments = state.assignments.filter(a => a.sid !== sid);
     state.leaves      = state.leaves.filter(l => l.sid !== sid);
