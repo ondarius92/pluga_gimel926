@@ -266,7 +266,13 @@ function renderOutput() {
 function openPreview() {
   const days = parseInt(document.getElementById('sched-days').value) || 2;
 
-  // ── כרטיסי תפקידים (כמו renderOutput) ──
+  // תפקידים להצגה — ללא ש"ג, בית, רופא, אחר
+  const PREVIEW_ROLES = ['maplag','hafk1','hafk2','hafk3','hafkmap','hamal','truck','camp','rescue'];
+  const ROLE_COLORS = {
+    maplag:'#8b0000', hafk1:'#c55a00', hafk2:'#880e4f', hafk3:'#2e7d32',
+    hafkmap:'#4527a0', hamal:'#6a1b9a', truck:'#5d4037', camp:'#1a6e32', rescue:'#d4890a'
+  };
+
   const groups = {};
   ROLES.forEach(r => { groups[r] = []; });
   state.assignments.forEach(a => {
@@ -274,16 +280,11 @@ function openPreview() {
     if (s) groups[a.role].push(s);
   });
 
-  // הסר ש"ג מהכרטיסים — יופיע כטבלת שעות
-  let cardsHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:14px">';
-  ROLES.filter(r => r !== 'shaga').forEach(r => {
+  // ── כרטיסי תפקידים ──
+  let cardsHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;margin-bottom:14px">';
+  PREVIEW_ROLES.forEach(r => {
     const m = groups[r]; if (!m.length) return;
-    const colors = {
-      maplag:'#8b0000', hafk1:'#c55a00', hafk2:'#880e4f', hafk3:'#2e7d32',
-      hafkmap:'#4527a0', hamal:'#6a1b9a', truck:'#5d4037', doctor:'#006064',
-      camp:'#1a6e32', rescue:'#d4890a', home:'#555', other:'#777'
-    };
-    const bg = colors[r] || '#333';
+    const bg = ROLE_COLORS[r] || '#333';
     cardsHtml += `<div style="border-radius:8px;overflow:hidden;border:2px solid ${bg}">
       <div style="background:${bg};padding:5px 10px;font-size:11px;font-weight:700;color:#fff;display:flex;justify-content:space-between">
         <span>${ROLE_EMOJI[r]} ${ROLE_LABEL[r]}</span><span style="opacity:.8">${m.length}</span>
@@ -292,7 +293,7 @@ function openPreview() {
     m.forEach((s, i) => {
       cardsHtml += `<tr style="border-bottom:1px solid #eee">
         <td style="padding:4px 8px;font-size:10px;color:#aaa;width:18px">${i+1}</td>
-        <td style="padding:4px 8px;font-size:10px;color:#666;width:50px">${s.rank||''}</td>
+        <td style="padding:4px 8px;font-size:10px;color:#666;width:45px">${s.rank||''}</td>
         <td style="padding:4px 8px;font-size:11px;font-weight:700">${s.name}</td>
       </tr>`;
     });
@@ -300,42 +301,50 @@ function openPreview() {
   });
   cardsHtml += '</div>';
 
-  // ── טבלת ש"ג לפי שעות ──
-  const shagaSols = getShagaSoldiers();
-  let shagaHtml = '';
-  if (shagaSols.length) {
-    shagaHtml = `<div style="border-radius:8px;overflow:hidden;border:2px solid #1a5a8a;margin-bottom:14px">
-      <div style="background:#1a5a8a;padding:6px 12px;font-size:12px;font-weight:700;color:#fff">🔵 לוז ש"ג — ${days} ימים</div>
-      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;background:#fff">
-        <thead><tr style="background:#2a6a9a">`;
-    for (let d = 0; d < days; d++) shagaHtml += `<th colspan="2" style="padding:5px 8px;color:#fff;text-align:center;font-size:10px">${DAY_NAMES[d%7]}</th>`;
-    shagaHtml += '</tr><tr style="background:#d8eaf5">';
-    for (let d2 = 0; d2 < days; d2++) shagaHtml += '<th style="padding:4px 6px;font-size:10px;color:#1a3a5c">שעות</th><th style="padding:4px 6px;font-size:10px;color:#1a3a5c">לוחם</th>';
-    shagaHtml += '</tr></thead><tbody>';
+  // ── לוז ש"ג — 36 שעות קדימה ──
+  const now = new Date();
+  const schedStart = new Date(); schedStart.setHours(0,0,0,0);
+  let shagaHtml = `<div style="border-radius:8px;overflow:hidden;border:2px solid #1a5a8a;margin-bottom:14px">
+    <div style="background:#1a5a8a;padding:6px 12px;font-size:12px;font-weight:700;color:#fff">🔵 לוז ש"ג — 36 שעות קדימה</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;background:#fff">
+      <thead><tr style="background:#d8eaf5">
+        <th style="padding:5px 8px;font-size:10px;color:#1a3a5c;text-align:right">יום</th>
+        <th style="padding:5px 8px;font-size:10px;color:#1a3a5c;text-align:right">שעות</th>
+        <th style="padding:5px 8px;font-size:10px;color:#1a3a5c;text-align:right">שומר</th>
+      </tr></thead><tbody>`;
 
-    SHAGA_SHIFTS.forEach((shift, si) => {
+  let slotsShown = 0;
+  for (let d = 0; d < 7 && slotsShown < 18; d++) {
+    for (let si = 0; si < SHAGA_SHIFTS.length && slotsShown < 18; si++) {
+      const shift = SHAGA_SHIFTS[si];
+      const slotTime = new Date(schedStart);
+      slotTime.setDate(slotTime.getDate() + d);
+      slotTime.setHours(shift.h, 0, 0, 0);
+      if (slotTime < now) continue; // דלג על עבר
+
+      const key = `day_${d}_shift_${si}`;
+      const val = state.schedule[key] || '';
+      const sol = state.soldiers.find(x => x.id === val);
+      const display = sol ? sol.name : (val || '—');
       const isNight = shift.isNight;
-      shagaHtml += `<tr style="background:${isNight?'#f0f0ff':'#fff'}">`;
-      for (let d3 = 0; d3 < days; d3++) {
-        const key = `day_${d3}_shift_${si}`;
-        const val = state.schedule[key] || '';
-        const sol = state.soldiers.find(x => x.id === val);
-        const display = sol ? sol.name : (val || '—');
-        shagaHtml += `<td style="padding:4px 6px;color:#1a5a8a;white-space:nowrap;font-size:10px;border-bottom:1px solid #d8eaf5">${shift.label}${isNight?' 🌙':''}</td>
-          <td style="padding:4px 6px;font-weight:700;font-size:11px;border-bottom:1px solid #d8eaf5;color:${isNight?'#4527a0':'#000'}">${display}</td>`;
-      }
-      shagaHtml += '</tr>';
-    });
-    shagaHtml += '</tbody></table></div></div>';
+      const dayLabel = DAY_NAMES[slotTime.getDay()];
+
+      shagaHtml += `<tr style="background:${isNight?'#f0f0ff':'#fff'};border-bottom:1px solid #d8eaf5">
+        <td style="padding:4px 8px;font-size:10px;color:#555;white-space:nowrap">${dayLabel}</td>
+        <td style="padding:4px 8px;font-size:10px;color:#1a5a8a;white-space:nowrap">${shift.label}${isNight?' 🌙':''}</td>
+        <td style="padding:4px 8px;font-size:11px;font-weight:700;color:${isNight?'#4527a0':'#000'}">${display}</td>
+      </tr>`;
+      slotsShown++;
+    }
   }
+  shagaHtml += '</tbody></table></div>';
 
   // ── טבלת סיורי חפ"ק ק. מלאכי ──
   let tourHtml = `<div style="border-radius:8px;overflow:hidden;border:2px solid #4527a0;margin-bottom:14px">
     <div style="background:#4527a0;padding:6px 12px;font-size:12px;font-weight:700;color:#fff">🟣 לוז חפ"ק ק. מלאכי — ${days} ימים</div>
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;background:#fff">
-      <thead>
-        <tr style="background:#d8eaf5">
-          <th style="padding:5px 8px;font-size:10px;color:#4527a0;text-align:right">סיור</th>`;
+      <thead><tr style="background:#ede7f6">
+        <th style="padding:5px 8px;font-size:10px;color:#4527a0;text-align:right">סיור</th>`;
   for (let d = 0; d < days; d++) tourHtml += `<th style="padding:5px 8px;font-size:10px;color:#4527a0;text-align:center">${DAY_NAMES[d%7]}</th>`;
   tourHtml += '</tr></thead><tbody>';
 
@@ -345,10 +354,7 @@ function openPreview() {
     for (let d = 0; d < days; d++) {
       const key = `day_${d}_${TOUR_KEYS[wi]}`;
       const tourVal = state.schedule[key] || '';
-      const tourRoleKey = tourVal; // hafk1/hafk2/hafk3
       const tourLabel = tourVal ? hafkLabel(tourVal) : '—';
-
-      // מצא חברי החפ"ק
       let memberNames = '';
       if (tourVal) {
         const members = state.assignments
@@ -356,9 +362,8 @@ function openPreview() {
           .map(a => state.soldiers.find(x => x.id === a.sid))
           .filter(Boolean)
           .map(s => s.name);
-        memberNames = members.length ? members.join(', ') : '';
+        memberNames = members.join(', ');
       }
-
       tourHtml += `<td style="padding:5px 8px;border-bottom:1px solid #e0d8f5;text-align:center">
         ${tourVal
           ? `<div style="font-weight:700;font-size:11px;color:#4527a0">${tourLabel}</div>
