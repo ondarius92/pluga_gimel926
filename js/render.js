@@ -398,7 +398,7 @@ function renderOutput() {
 // ── תצוגה מקדימה ──
 function openPreview() {
   const days = parseInt(document.getElementById('sched-days').value) || 2;
-  const PREVIEW_ROLES = ['maplag','hafk1','hafk2','hafk3','hafkmap','hamal','truck','camp','rescue'];
+  const PREVIEW_ROLES = ['hafk1','hafk2','hafk3','hafkmap','hamal','truck','camp','rescue'];
   const ROLE_COLORS = {
     maplag:'#8b0000', hafk1:'#c55a00', hafk2:'#880e4f', hafk3:'#2e7d32',
     hafkmap:'#4527a0', hamal:'#6a1b9a', truck:'#5d4037', camp:'#1a6e32', rescue:'#d4890a'
