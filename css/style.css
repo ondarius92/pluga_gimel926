@@ -158,8 +158,9 @@ input::placeholder { color: #999; }
 .c-doctor { border-color: #006064; } .c-doctor .out-card-header { background: #006064; }
 .c-camp { border-color: #1a6e32; } .c-camp .out-card-header { background: #1a6e32; }
 .c-rescue { border-color: #d4890a; } .c-rescue .out-card-header { background: #d4890a; }
-.c-home { border-color: #555; } .c-home .out-card-header { background: #555; }
+.c-konanut { border-color: #e65100; } .c-konanut .out-card-header { background: #e65100; }
 .c-other { border-color: #777; } .c-other .out-card-header { background: #777; }
+.c-home { border-color: #555; } .c-home .out-card-header { background: #555; }
 .c-unassigned { border-color: #aaa; border-style: dashed; } .c-unassigned .out-card-header { background: #888; }
 
 .overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.55); z-index: 200; display: none; align-items: center; justify-content: center; padding: 14px; }
