@@ -54,20 +54,61 @@ let state = {
   _ts: 0
 };
 
+// ── UNDO HISTORY ──
+const MAX_UNDO = 20;
+let undoStack = [];
+
+function pushUndo() {
+  undoStack.push(JSON.stringify(state));
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+  updateUndoBtn();
+}
+
+function undo() {
+  if (!undoStack.length) { alert('אין שינויים לביטול'); return; }
+  if (!confirm('לבטל את השינוי האחרון?')) return;
+  const prev = JSON.parse(undoStack.pop());
+  state = prev;
+  fixState();
+  save();
+  renderAll();
+  updateUndoBtn();
+  showSync('↩️ בוטל');
+}
+
+function updateUndoBtn() {
+  const btn = document.getElementById('undo-btn');
+  if (btn) {
+    btn.disabled = undoStack.length === 0;
+    btn.style.opacity = undoStack.length === 0 ? '0.4' : '1';
+    btn.title = `ביטול (${undoStack.length} שינויים)`;
+  }
+}
+
 let _ec = 1;
 function eid() { return 'e' + (++_ec) + Date.now(); }
 
+// ── LOAD ──
+
 function loadState() {
+  // נסה URL hash
   try {
     const h = window.location.hash.slice(1);
     if (h) {
       const d = JSON.parse(decodeURIComponent(atob(h)));
       if (d && d.soldiers && d.soldiers.length) {
-        state = d; fixState(); mergeDefaults(); return;
+        state = d;
+        fixState();
+        mergeDefaults();
+        save();
+        window.location.hash = '';
+        showSync('✅ נטען מקישור!');
+        return;
       }
     }
   } catch(e) {}
 
+  // נסה localStorage
   try {
     const raw = localStorage.getItem('shabatzak12');
     if (raw) {
@@ -92,6 +133,7 @@ function fixState() {
   if (!state._ts)         state._ts         = 0;
   _ec = (state.assignments || []).length + 2;
 
+  // Migration
   state.soldiers.forEach(s => {
     if (s.name === 'דניאל' && s.rank === 'חופלת') {
       if (state.history[s.name]) {
@@ -137,6 +179,8 @@ function ensureHist(name) {
   if (!state.history[name]) state.history[name] = { total: 0, shagaShifts: 0 };
 }
 
+// ── SAVE ──
+
 function save() {
   state._ts = Date.now();
   try { localStorage.setItem('shabatzak12', JSON.stringify(state)); } catch(e) {}
@@ -153,4 +197,10 @@ function save() {
         .catch(() => showSync('⚠️ שגיאה'));
     }, 1000);
   }
+}
+
+// save עם undo
+function saveWithUndo() {
+  pushUndo();
+  save();
 }
