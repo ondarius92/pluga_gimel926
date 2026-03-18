@@ -20,16 +20,16 @@ function initFirebase() {
     firebaseReady = true;
 
     db.ref('shabatzak/state').on('value', (snapshot) => {
-      const remote = snapshot.val();
-      if (!remote) return;
-      if (remote._ts && remote._ts > (state._ts || 0)) {
-        state = remote;
-        fixState();
-        renderAll();
-        showSync('✅ מסונכרן');
-      }
-    });
-
+  const remote = snapshot.val();
+  if (!remote) return;
+  // עדכן תמיד אם השינוי לא שלנו
+  if (remote._ts && remote._ts !== state._ts) {
+    state = remote;
+    fixState();
+    renderAll();
+    showSync('✅ מסונכרן');
+  }
+});
     showSync('🔥 מחובר');
   } catch(e) {
     console.warn('Firebase error:', e);
