@@ -23,7 +23,6 @@ function initFirebase() {
 
     const loadTimeout = setTimeout(() => {
       if (!firebaseLoaded) {
-        console.warn('Firebase timeout — loading from localStorage');
         loadFromLocal();
         renderAll();
         showSync('💾 מקומי');
@@ -46,7 +45,6 @@ function initFirebase() {
         renderAll();
       }
 
-      // הקשב לשינויים בזמן אמת
       db.ref('shabatzak/state').on('value', (snap) => {
         const r = snap.val();
         if (!r) return;
@@ -99,6 +97,7 @@ let state = {
   leaves: [],
   history: {},
   order: {},
+  removedIds: [],
   _ts: 0
 };
 
@@ -159,34 +158,26 @@ function fixState() {
   if (!state.history)     state.history     = {};
   if (!state.order)       state.order       = {};
   if (!state.leaves)      state.leaves      = [];
+  if (!state.removedIds)  state.removedIds  = [];
   if (!state._ts)         state._ts         = 0;
   _ec = (state.assignments || []).length + 2;
 
   // Migrations
   state.soldiers.forEach(s => {
     if (s.name === 'איבגני') {
-      if (state.history[s.name]) {
-        state.history['יבגני'] = state.history[s.name];
-        delete state.history[s.name];
-      }
+      if (state.history[s.name]) { state.history['יבגני'] = state.history[s.name]; delete state.history[s.name]; }
       s.name = 'יבגני';
     }
     if (s.name === 'דניאל' && s.rank === 'חופלת') {
-      if (state.history[s.name]) {
-        state.history['דניאל לוי'] = state.history[s.name];
-        delete state.history[s.name];
-      }
+      if (state.history[s.name]) { state.history['דניאל לוי'] = state.history[s.name]; delete state.history[s.name]; }
       s.name = 'דניאל לוי';
     }
   });
 
-  // הסר לוחמים ישנים שנמחקו
+  // הסר לוחמים ישנים
   const OLD_NAMES = ['הילי','רותי','פרנהרא','סליה','דבת','פרנדו','מצוה'];
   state.soldiers = state.soldiers.filter(s => !OLD_NAMES.includes(s.name));
-  state.assignments = state.assignments.filter(a => {
-    const s = state.soldiers.find(x => x.id === a.sid);
-    return !!s;
-  });
+  state.assignments = state.assignments.filter(a => state.soldiers.find(x => x.id === a.sid));
 }
 
 function mergeDefaults() {
@@ -196,8 +187,10 @@ function mergeDefaults() {
     return s && !BANNED_NAMES.includes(s.name);
   });
 
+  // הוסף לוחמי ברירת מחדל — אבל לא אם הוסרו ידנית
   DEFAULT_SOLDIERS.forEach(ds => {
     if (BANNED_NAMES.includes(ds.name)) return;
+    if (state.removedIds && state.removedIds.includes(ds.id)) return;
     if (!state.soldiers.find(s => s.id === ds.id || s.name === ds.name)) {
       state.soldiers.push({ id: ds.id, name: ds.name, rank: ds.rank });
       ensureHist(ds.name);
