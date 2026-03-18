@@ -66,7 +66,7 @@ function renderPosList() {
     m.forEach(mx => {
       html += `<div class="chip">${mx.s.name}
         <span class="chip-edit" onclick="openEditSoldier('${mx.s.id}')" title="ערוך">✏️</span>
-        <span class="chip-x" onclick="unassignToFree('${mx.aid}')" title="הסר לללא שיבוץ">✕</span>
+        <span class="chip-x" onclick="unassignToFree('${mx.aid}')" title="הסר">✕</span>
       </div>`;
     });
     html += '</div></div>';
@@ -262,101 +262,132 @@ function renderOutput() {
   grid.innerHTML = html || '<div style="color:#aaa;padding:30px;text-align:center;grid-column:1/-1;font-size:14px">הוסף לוחמים ושבץ אותם — הטבלאות יופיעו כאן</div>';
 }
 
-// ── תצוגה מקדימה 36 שעות ──
+// ── תצוגה מקדימה ──
 function openPreview() {
-  const now = new Date();
-  const TASK_COLORS = {
-    shaga:   '#1a5a8a',
-    hafkmap: '#4527a0',
-    hamal:   '#6a1b9a',
-    hafk1:   '#c55a00',
-    hafk2:   '#880e4f',
-    hafk3:   '#2e7d32',
-    tour:    '#00796b'
-  };
+  const days = parseInt(document.getElementById('sched-days').value) || 2;
 
-  // בנה לוח 36 שעות
-  let rows = '';
-  for (let h = 0; h < 36; h += 2) {
-    const slotTime = new Date(now);
-    slotTime.setMinutes(0,0,0);
-    slotTime.setHours(slotTime.getHours() + h);
-    const label = `${String(slotTime.getHours()).padStart(2,'0')}:00`;
-    const dayLabel = DAY_NAMES[slotTime.getDay()];
+  // ── כרטיסי תפקידים (כמו renderOutput) ──
+  const groups = {};
+  ROLES.forEach(r => { groups[r] = []; });
+  state.assignments.forEach(a => {
+    const s = state.soldiers.find(x => x.id === a.sid);
+    if (s) groups[a.role].push(s);
+  });
 
-    // מצא ש"ג
-    const schedStart = new Date(); schedStart.setHours(0,0,0,0);
-    const diffH = (slotTime - schedStart) / 3600000;
-    const dayIdx = Math.floor(diffH / 24);
-    const shiftIdx = SHAGA_SHIFTS.findIndex(s => s.h === slotTime.getHours());
-    let shagaName = '—';
-    if (shiftIdx >= 0) {
-      const key = `day_${dayIdx}_shift_${shiftIdx}`;
-      const sid = state.schedule[key];
-      const sol = sid ? state.soldiers.find(x => x.id === sid) : null;
-      shagaName = sol ? sol.name : '—';
-    }
+  // הסר ש"ג מהכרטיסים — יופיע כטבלת שעות
+  let cardsHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:14px">';
+  ROLES.filter(r => r !== 'shaga').forEach(r => {
+    const m = groups[r]; if (!m.length) return;
+    const colors = {
+      maplag:'#8b0000', hafk1:'#c55a00', hafk2:'#880e4f', hafk3:'#2e7d32',
+      hafkmap:'#4527a0', hamal:'#6a1b9a', truck:'#5d4037', doctor:'#006064',
+      camp:'#1a6e32', rescue:'#d4890a', home:'#555', other:'#777'
+    };
+    const bg = colors[r] || '#333';
+    cardsHtml += `<div style="border-radius:8px;overflow:hidden;border:2px solid ${bg}">
+      <div style="background:${bg};padding:5px 10px;font-size:11px;font-weight:700;color:#fff;display:flex;justify-content:space-between">
+        <span>${ROLE_EMOJI[r]} ${ROLE_LABEL[r]}</span><span style="opacity:.8">${m.length}</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;background:#fff">`;
+    m.forEach((s, i) => {
+      cardsHtml += `<tr style="border-bottom:1px solid #eee">
+        <td style="padding:4px 8px;font-size:10px;color:#aaa;width:18px">${i+1}</td>
+        <td style="padding:4px 8px;font-size:10px;color:#666;width:50px">${s.rank||''}</td>
+        <td style="padding:4px 8px;font-size:11px;font-weight:700">${s.name}</td>
+      </tr>`;
+    });
+    cardsHtml += '</table></div>';
+  });
+  cardsHtml += '</div>';
 
-    // מצא סיור
-    let tourName = '—';
-    const tourKey1 = `day_${dayIdx}_t1`;
-    const tourKey2 = `day_${dayIdx}_t2`;
-    const tourH = slotTime.getHours();
-    const tourKey = (tourH >= 10 && tourH < 22) ? tourKey1 : tourKey2;
-    const tourVal = state.schedule[tourKey];
-    if (tourVal) tourName = hafkLabel(tourVal);
+  // ── טבלת ש"ג לפי שעות ──
+  const shagaSols = getShagaSoldiers();
+  let shagaHtml = '';
+  if (shagaSols.length) {
+    shagaHtml = `<div style="border-radius:8px;overflow:hidden;border:2px solid #1a5a8a;margin-bottom:14px">
+      <div style="background:#1a5a8a;padding:6px 12px;font-size:12px;font-weight:700;color:#fff">🔵 לוז ש"ג — ${days} ימים</div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;background:#fff">
+        <thead><tr style="background:#2a6a9a">`;
+    for (let d = 0; d < days; d++) shagaHtml += `<th colspan="2" style="padding:5px 8px;color:#fff;text-align:center;font-size:10px">${DAY_NAMES[d%7]}</th>`;
+    shagaHtml += '</tr><tr style="background:#d8eaf5">';
+    for (let d2 = 0; d2 < days; d2++) shagaHtml += '<th style="padding:4px 6px;font-size:10px;color:#1a3a5c">שעות</th><th style="padding:4px 6px;font-size:10px;color:#1a3a5c">לוחם</th>';
+    shagaHtml += '</tr></thead><tbody>';
 
-    // חמ"ל
-    const hamalSoldiers = state.assignments
-      .filter(a => a.role === 'hamal')
-      .map(a => state.soldiers.find(x => x.id === a.sid))
-      .filter(Boolean)
-      .map(s => s.name).join(', ') || '—';
-
-    // חפ"ק מ"פ
-    const hafkmapSoldiers = state.assignments
-      .filter(a => a.role === 'hafkmap')
-      .map(a => state.soldiers.find(x => x.id === a.sid))
-      .filter(Boolean)
-      .map(s => s.name).join(', ') || '—';
-
-    rows += `<tr>
-      <td style="font-size:11px;color:#555;white-space:nowrap;padding:4px 8px">${dayLabel}<br><strong>${label}</strong></td>
-      <td style="padding:4px 8px"><span style="background:${TASK_COLORS.shaga};color:#fff;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700">${shagaName}</span></td>
-      <td style="padding:4px 8px"><span style="background:${TASK_COLORS.tour};color:#fff;padding:2px 8px;border-radius:6px;font-size:12px;font-weight:700">${tourName}</span></td>
-      <td style="padding:4px 8px;font-size:11px;color:#333">${hamalSoldiers}</td>
-      <td style="padding:4px 8px;font-size:11px;color:#333">${hafkmapSoldiers}</td>
-    </tr>`;
+    SHAGA_SHIFTS.forEach((shift, si) => {
+      const isNight = shift.isNight;
+      shagaHtml += `<tr style="background:${isNight?'#f0f0ff':'#fff'}">`;
+      for (let d3 = 0; d3 < days; d3++) {
+        const key = `day_${d3}_shift_${si}`;
+        const val = state.schedule[key] || '';
+        const sol = state.soldiers.find(x => x.id === val);
+        const display = sol ? sol.name : (val || '—');
+        shagaHtml += `<td style="padding:4px 6px;color:#1a5a8a;white-space:nowrap;font-size:10px;border-bottom:1px solid #d8eaf5">${shift.label}${isNight?' 🌙':''}</td>
+          <td style="padding:4px 6px;font-weight:700;font-size:11px;border-bottom:1px solid #d8eaf5;color:${isNight?'#4527a0':'#000'}">${display}</td>`;
+      }
+      shagaHtml += '</tr>';
+    });
+    shagaHtml += '</tbody></table></div></div>';
   }
 
-  const html = `
-    <div id="preview-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto" onclick="if(event.target===this)closePreview()">
-      <div style="background:#fff;border-radius:12px;width:100%;max-width:750px;overflow:hidden;margin:auto">
-        <div style="background:#1a3a5c;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
-          <h2 style="color:#fff;font-size:15px;font-weight:700">👁 תצוגה מקדימה — 36 שעות קדימה</h2>
-          <button onclick="closePreview()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px">✕ סגור</button>
+  // ── טבלת סיורי חפ"ק ק. מלאכי ──
+  let tourHtml = `<div style="border-radius:8px;overflow:hidden;border:2px solid #4527a0;margin-bottom:14px">
+    <div style="background:#4527a0;padding:6px 12px;font-size:12px;font-weight:700;color:#fff">🟣 לוז חפ"ק ק. מלאכי — ${days} ימים</div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;background:#fff">
+      <thead>
+        <tr style="background:#d8eaf5">
+          <th style="padding:5px 8px;font-size:10px;color:#4527a0;text-align:right">סיור</th>`;
+  for (let d = 0; d < days; d++) tourHtml += `<th style="padding:5px 8px;font-size:10px;color:#4527a0;text-align:center">${DAY_NAMES[d%7]}</th>`;
+  tourHtml += '</tr></thead><tbody>';
+
+  TOUR_WINDOWS.forEach((wl, wi) => {
+    tourHtml += `<tr style="background:${wi===0?'#fff':'#f5f0ff'}">
+      <td style="padding:5px 8px;font-size:10px;font-weight:700;color:#4527a0;white-space:nowrap;border-bottom:1px solid #e0d8f5">${wl}</td>`;
+    for (let d = 0; d < days; d++) {
+      const key = `day_${d}_${TOUR_KEYS[wi]}`;
+      const tourVal = state.schedule[key] || '';
+      const tourRoleKey = tourVal; // hafk1/hafk2/hafk3
+      const tourLabel = tourVal ? hafkLabel(tourVal) : '—';
+
+      // מצא חברי החפ"ק
+      let memberNames = '';
+      if (tourVal) {
+        const members = state.assignments
+          .filter(a => a.role === tourVal)
+          .map(a => state.soldiers.find(x => x.id === a.sid))
+          .filter(Boolean)
+          .map(s => s.name);
+        memberNames = members.length ? members.join(', ') : '';
+      }
+
+      tourHtml += `<td style="padding:5px 8px;border-bottom:1px solid #e0d8f5;text-align:center">
+        ${tourVal
+          ? `<div style="font-weight:700;font-size:11px;color:#4527a0">${tourLabel}</div>
+             <div style="font-size:9px;color:#666;margin-top:2px">${memberNames}</div>`
+          : '<span style="color:#ccc">—</span>'}
+      </td>`;
+    }
+    tourHtml += '</tr>';
+  });
+  tourHtml += '</tbody></table></div></div>';
+
+  // ── Overlay ──
+  const wrapper = document.createElement('div');
+  wrapper.id = 'preview-wrapper';
+  wrapper.innerHTML = `
+    <div id="preview-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:500;overflow-y:auto;padding:16px" onclick="if(event.target.id==='preview-overlay')closePreview()">
+      <div style="background:#f0f2f5;border-radius:12px;max-width:900px;margin:0 auto;overflow:hidden">
+        <div style="background:#1a3a5c;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10">
+          <h2 style="color:#fff;font-size:15px;font-weight:700">👁 תצוגה מקדימה — שבצק פלוגה</h2>
+          <button onclick="closePreview()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:13px;font-weight:700">✕ סגור</button>
         </div>
-        <div style="overflow-x:auto">
-          <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif">
-            <thead>
-              <tr style="background:#f0f4f8">
-                <th style="padding:8px;text-align:right;font-size:12px;color:#555">שעה</th>
-                <th style="padding:8px;text-align:right;font-size:12px;background:#e3f0fb;color:#1a5a8a">🔵 ש"ג</th>
-                <th style="padding:8px;text-align:right;font-size:12px;background:#e8f5e9;color:#00796b">🟢 ק. מלאכי</th>
-                <th style="padding:8px;text-align:right;font-size:12px;background:#f3e5f5;color:#6a1b9a">🟤 חמ"ל</th>
-                <th style="padding:8px;text-align:right;font-size:12px;background:#ede7f6;color:#4527a0">🟣 חפ"ק מ"פ</th>
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
+        <div style="padding:14px">
+          ${cardsHtml}
+          ${shagaHtml}
+          ${tourHtml}
         </div>
       </div>
     </div>`;
-
-  const div = document.createElement('div');
-  div.id = 'preview-wrapper';
-  div.innerHTML = html;
-  document.body.appendChild(div);
+  document.body.appendChild(wrapper);
 }
 
 function closePreview() {
