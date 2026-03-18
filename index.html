@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>שבצק פלוגה</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="header">
+  <h1>⚔️ שבצק פלוגה</h1>
+  <div class="hdr-pills">
+    <div class="pill"><strong id="hp-total">0</strong>סה"כ</div>
+    <div class="pill"><strong id="hp-assigned">0</strong>משובצים</div>
+    <div class="pill"><strong id="hp-free">0</strong>פנויים</div>
+    <div class="pill"><strong id="hp-home">0</strong>בבית</div>
+    <div class="pill"><strong id="hp-out">0</strong>בחוץ</div>
+    <span id="sync-status"></span>
+  </div>
+</div>
+
+<div class="app">
+
+<div class="input-col no-print">
+
+  <div class="sec-title">הוספת לוחם</div>
+  <input type="text" id="in-name" placeholder="שם מלא" onkeydown="if(event.key==='Enter')addSoldier()">
+  <input type="text" id="in-rank" placeholder='דרגה (רס"ל, סמ"ג...)'>
+  <div class="btn-row">
+    <button class="btn btn-blue" style="flex:1" onclick="addSoldier()">+ הוסף לוחם</button>
+  </div>
+
+  <hr class="divider">
+
+  <div class="sec-title">שיבוץ לעמדה</div>
+  <select id="in-soldier"><option value="">— בחר לוחם —</option></select>
+  <select id="in-pos">
+    <option value="maplag">מפל"ג</option>
+    <option value="shaga">ש"ג</option>
+    <option value="hafk1">חפ"ק 1</option>
+    <option value="hafk2">חפ"ק 2</option>
+    <option value="hafk3">חפ"ק 3</option>
+    <option value="hafkmap">חפ"ק מפ</option>
+    <option value="hamal">חמ"ל</option>
+    <option value="truck">נהג משאית</option>
+    <option value="doctor">רופא פלוגתי</option>
+    <option value="camp">הגנת מחנה + חמל</option>
+    <option value="rescue">כוח חילוץ אוטובוס</option>
+    <option value="home">בבית</option>
+    <option value="other">אחר</option>
+  </select>
+  <div class="btn-row">
+    <button class="btn btn-blue" style="flex:1" onclick="assignSoldier()">+ שבץ</button>
+    <button class="btn btn-orange" style="flex:1" onclick="autoFillShaga()">⚡ מלא פנויים לש"ג</button>
+  </div>
+  <p style="font-size:11px;color:#888;margin-bottom:6px">✏️ ערוך &nbsp;|&nbsp; ✕ הסר ממשימה &nbsp;|&nbsp; 🗑 מחק לוחם</p>
+
+  <div class="sec-title">שיבוצים נוכחיים</div>
+  <div id="pos-list" class="pos-list"></div>
+
+  <hr class="divider">
+
+  <div class="sec-title">לוז ש"ג</div>
+  <div class="btn-row">
+    <button class="btn btn-green btn-sm" onclick="genSched()">⚡ מלא אוטומטי חכם</button>
+    <select id="sched-days" style="margin-bottom:0;flex:1;min-width:100px;padding:5px 8px;font-size:12px" onchange="renderAll()">
+      <option value="1">יום אחד</option>
+      <option value="2" selected>יומיים</option>
+      <option value="3">3 ימים</option>
+      <option value="7">שבוע</option>
+    </select>
+    <button class="btn btn-red btn-sm" onclick="clearSched()">נקה</button>
+  </div>
+  <p style="font-size:11px;color:#888;margin-bottom:4px">גרור שמות להחלפת משמרות. 🌙 = לילה.</p>
+  <div id="sched-input" style="margin-top:4px"></div>
+
+  <hr class="divider">
+
+  <div class="sec-title">יציאות</div>
+  <div style="display:flex;gap:5px;margin-bottom:5px;flex-wrap:wrap;align-items:center">
+    <select id="leave-soldier" style="flex:2;margin-bottom:0"></select>
+    <select id="leave-dur" style="flex:1;max-width:90px;margin-bottom:0;padding:5px 7px;font-size:12px" onchange="autoFillReturn()">
+      <option value="24">24 שעות</option>
+      <option value="48" selected>48 שעות</option>
+      <option value="72">72 שעות</option>
+    </select>
+  </div>
+  <div style="display:flex;gap:5px;margin-bottom:5px;align-items:center;flex-wrap:wrap">
+    <span style="font-size:11px;color:#555;white-space:nowrap">יציאה:</span>
+    <input type="datetime-local" id="leave-out" style="flex:1;margin-bottom:0;font-size:11px;padding:4px 6px" onchange="autoFillReturn()">
+    <span style="font-size:11px;color:#555;white-space:nowrap">חזרה:</span>
+    <input type="datetime-local" id="leave-back" style="flex:1;margin-bottom:0;font-size:11px;padding:4px 6px">
+  </div>
+  <button class="btn btn-teal btn-sm" style="width:100%;margin-bottom:6px" onclick="addLeave()">+ הוסף יציאה</button>
+
+  <hr class="divider">
+
+  <div class="sec-title">פעולות</div>
+  <div class="btn-row">
+    <button class="btn btn-purple btn-sm" onclick="genLink()">🔗 צור קישור</button>
+    <button class="btn btn-dark btn-sm" onclick="clearAll()">🗑 נקה הכל</button>
+    <button class="btn btn-green btn-sm no-print" onclick="window.print()">🖨️ הדפס</button>
+  </div>
+  <div id="share-area" style="display:none" class="share-area">
+    <div id="share-status" style="font-size:12px;font-weight:700;margin-bottom:3px;color:#1a6e32">⏳ מקצר...</div>
+    <textarea id="share-url" class="share-url" rows="1" readonly onclick="this.select()"></textarea>
+    <div class="btn-row" style="margin:0">
+      <button class="btn btn-blue btn-sm" onclick="copyLink()">📋 העתק</button>
+      <button class="btn btn-green btn-sm" onclick="waLink()">📱 וואטסאפ</button>
+    </div>
+  </div>
+  <div style="margin-top:8px">
+    <input type="text" id="load-url" placeholder="הדבק קישור לטעינה..." style="margin-bottom:4px">
+    <button class="btn btn-blue btn-sm" onclick="loadLink()" style="width:100%">טען שבצק</button>
+    <div id="load-msg" style="font-size:12px;margin-top:4px"></div>
+  </div>
+
+</div>
+
+<div class="output-col">
+  <div class="out-toolbar no-print">
+    <input type="text" id="out-title" value="שבצק פלוגה" style="font-size:16px;font-weight:700;border:none;border-bottom:2px solid #1a3a5c;border-radius:0;padding:3px 6px;flex:1;min-width:140px;margin-bottom:0">
+    <input type="date" id="out-date" style="max-width:145px;margin-bottom:0;font-size:12px;padding:4px 7px">
+  </div>
+  <div id="out-grid" class="out-grid"></div>
+</div>
+
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3 id="modal-h">אישור</h3>
+    <p id="modal-txt" style="font-size:13px;margin-bottom:14px;color:#000;line-height:1.6"></p>
+    <div class="modal-btns">
+      <button class="btn btn-dark btn-sm" onclick="closeModal()">ביטול</button>
+      <button class="btn btn-red btn-sm" id="modal-confirm">אשר</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="edit-overlay">
+  <div class="modal">
+    <h3>✏️ עריכת לוחם</h3>
+    <input type="hidden" id="edit-sid">
+    <label>שם</label><input type="text" id="edit-name">
+    <label>דרגה</label><input type="text" id="edit-rank">
+    <div class="modal-btns">
+      <button class="btn btn-dark btn-sm" onclick="closeEditModal()">ביטול</button>
+      <button class="btn btn-blue btn-sm" onclick="saveEditSoldier()">שמור</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/constants.js"></script>
+<script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/schedule.js"></script>
+<script src="js/leaves.js"></script>
+<script src="js/share.js"></script>
+<script src="js/render.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
