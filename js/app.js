@@ -5,6 +5,7 @@ function addSoldier() {
   const rank = document.getElementById('in-rank').value.trim();
   if (BANNED_NAMES.includes(name)) { alert('לוחם זה הוסר לצמיתות.'); return; }
   if (state.soldiers.find(s => s.name === name)) { alert('לוחם בשם זה כבר קיים.'); return; }
+  pushUndo();
   state.soldiers.push({ id: String(Date.now()), name, rank });
   ensureHist(name);
   document.getElementById('in-name').value = '';
@@ -14,7 +15,7 @@ function addSoldier() {
 }
 
 function unassignToFree(aid) {
-  // הסר משיבוץ — לוחם עובר לללא שיבוץ
+  pushUndo();
   state.assignments = state.assignments.filter(a => a.id !== aid);
   save(); renderAll();
 }
@@ -35,6 +36,7 @@ function saveEditSoldier() {
   const rank = document.getElementById('edit-rank').value.trim();
   if (!name) { alert('שם לא יכול להיות ריק'); return; }
   const s = state.soldiers.find(x => x.id === sid); if (!s) return;
+  pushUndo();
   if (s.name !== name && state.history[s.name]) {
     state.history[name] = state.history[s.name];
     delete state.history[s.name];
@@ -49,6 +51,7 @@ function assignSoldier() {
   const sid  = document.getElementById('in-soldier').value;
   const role = document.getElementById('in-pos').value;
   if (!sid) { alert('בחר לוחם'); return; }
+  pushUndo();
   state.assignments.push({ id: eid(), sid, role });
   const s = state.soldiers.find(x => x.id === sid);
   if (s) {
@@ -62,6 +65,7 @@ function assignSoldier() {
 function autoFillShaga() {
   const air = state.soldiers.filter(s => state.assignments.filter(a => a.sid === s.id).length === 0);
   if (!air.length) { alert('אין לוחמים ללא שיבוץ'); return; }
+  pushUndo();
   air.forEach(s => { state.assignments.push({ id: eid(), sid: s.id, role: 'shaga' }); ensureHist(s.name); });
   save(); renderAll();
   alert(`שובצו ${air.length} לוחמים לש"ג.`);
@@ -69,8 +73,70 @@ function autoFillShaga() {
 
 function clearAll() {
   if (!confirm('לנקות שיבוצים, לוז ויציאות?\nהלוחמים יישארו.')) return;
+  pushUndo();
   state.assignments = []; state.schedule = {}; state.order = {}; state.leaves = [];
   applyDefaultAssignments();
+  save(); renderAll();
+}
+
+// ── SCHEDULE ──
+
+function onShagaChangeSafe(key, sel, dayIdx, isNight) {
+  const prevVal = state.schedule[key] || '';
+  const newVal  = sel.value;
+  if (newVal === '__manual__') {
+    state.schedule[key] = ''; save(); renderSchedInput();
+    const inp = document.getElementById('mi_' + key);
+    if (inp) inp.focus();
+    return;
+  }
+  if (newVal === prevVal) return;
+
+  const s = newVal ? state.soldiers.find(x => x.id === newVal) : null;
+  const name = s ? s.name : '?';
+  const prevS = prevVal ? state.soldiers.find(x => x.id === prevVal) : null;
+  const prevName = prevS ? prevS.name : '—';
+
+  let msg = `לשנות משמרת ${key.replace('day_','יום ').replace('_shift_',' — משמרת ')}?\n`;
+  msg += `מ: ${prevName}\nל: ${name}`;
+
+  if (!confirm(msg)) {
+    sel.value = prevVal; return;
+  }
+
+  if (s && isNight && dayIdx !== undefined) {
+    if (isLeavingMorning(s.id, dayIdx)) {
+      if (!confirm('⚠️ לוחם זה יוצא הבוקר. לשבץ בכל זאת?')) {
+        sel.value = prevVal; return;
+      }
+    }
+    const pts = key.split('_');
+    const sh  = SHAGA_SHIFTS[parseInt(pts[3])];
+    if (sh && isOnLeave(s.id, dayIdx, sh.h)) {
+      if (!confirm('⛔ לוחם זה בחוץ. לשבץ בכל זאת?')) {
+        sel.value = prevVal; return;
+      }
+    }
+  }
+
+  pushUndo();
+  state.schedule[key] = newVal;
+  save(); renderSchedInput();
+}
+
+// ── LEAVES ──
+
+function addLeaveConfirmed() {
+  const sid     = document.getElementById('leave-soldier').value;
+  const outVal  = document.getElementById('leave-out').value;
+  const backVal = document.getElementById('leave-back').value;
+  if (!sid || !outVal || !backVal) { alert('מלא את כל השדות'); return; }
+  if (new Date(backVal) <= new Date(outVal)) { alert('תאריך חזרה חייב להיות אחרי יציאה'); return; }
+  const s = state.soldiers.find(x => x.id === sid);
+  const name = s ? s.name : '?';
+  if (!confirm(`להוסיף יציאה עבור ${name}?`)) return;
+  pushUndo();
+  state.leaves.push({ id: eid(), sid, outDate: outVal, backDate: backVal });
   save(); renderAll();
 }
 
@@ -101,6 +167,7 @@ function onDrop(e) {
   e.preventDefault();
   const target = e.currentTarget; target.classList.remove('drag-over');
   if (!_dragSrc || _dragSrc === target || _dragSrc.dataset.role !== target.dataset.role) return;
+  pushUndo();
   const tbody = target.closest('tbody');
   const rows  = Array.from(tbody.querySelectorAll('tr'));
   const si = rows.indexOf(_dragSrc), ti = rows.indexOf(target);
@@ -125,6 +192,15 @@ function onSchedDragEnd(e)   { e.currentTarget.style.opacity = '1'; }
 function onSchedDrop(e, key) {
   e.preventDefault(); e.currentTarget.classList.remove('drag-over');
   if (!_schedDragKey || _schedDragKey === key) return;
+
+  const s1 = state.soldiers.find(x => x.id === state.schedule[_schedDragKey]);
+  const s2 = state.soldiers.find(x => x.id === state.schedule[key]);
+  const n1 = s1 ? s1.name : '—';
+  const n2 = s2 ? s2.name : '—';
+
+  if (!confirm(`להחליף משמרות?\n${n1} ↔ ${n2}`)) return;
+
+  pushUndo();
   const tmp = state.schedule[_schedDragKey];
   state.schedule[_schedDragKey] = state.schedule[key] || '';
   state.schedule[key] = tmp || '';
@@ -144,4 +220,5 @@ document.addEventListener('DOMContentLoaded', () => {
   loadState();
   initFirebase();
   renderAll();
+  updateUndoBtn();
 });
