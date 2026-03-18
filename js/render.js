@@ -28,8 +28,8 @@ function renderSoldierSelect() {
   const sorted = state.soldiers.slice().sort((a, b) => a.name.localeCompare(b.name, 'he'));
   sel.innerHTML = '<option value="">— בחר לוחם —</option>' + sorted.map(s => {
     const roles = state.assignments.filter(a => a.sid === s.id).map(a => ROLE_LABEL[a.role]);
-    const now = new Date();
-    const soon = new Date(now.getTime() + 24 * 3600000);
+    const now  = new Date();
+    const soon = new Date(now.getTime() + 48 * 3600000);
     const isOut  = state.leaves.some(l => l.sid === s.id && new Date(l.outDate) <= now && new Date(l.backDate) > now);
     const isSoon = !isOut && state.leaves.some(l => l.sid === s.id && new Date(l.outDate) > now && new Date(l.outDate) <= soon);
     const flag = isOut ? ' 🚶' : isSoon ? ' ⏳' : '';
@@ -156,7 +156,7 @@ function renderSchedInput() {
 // ── עזר: סטטוס יציאות ──
 function getHomeStatus() {
   const now  = new Date();
-  const soon = new Date(now.getTime() + 24 * 3600000); // 24 שעות
+  const soon = new Date(now.getTime() + 48 * 3600000); // 48 שעות קדימה
   const currentlyOut  = new Set();
   const goingHomeSoon = new Set();
   state.leaves.forEach(l => {
@@ -184,6 +184,19 @@ function warnIfOut(sid, roleName) {
     const name = s ? s.name : '?';
     const back = formatDT(leave.backDate);
     return confirm(`⚠️ ${name} נמצא בבית כרגע!\nצפוי לחזור: ${back}\nלשבץ ל${roleName} בכל זאת?`);
+  }
+  // בדוק גם אם יוצא ב-48 שעות הקרובות
+  const soon = new Date(now.getTime() + 48 * 3600000);
+  const soonLeave = state.leaves.find(l =>
+    l.sid === sid &&
+    new Date(l.outDate) > now &&
+    new Date(l.outDate) <= soon
+  );
+  if (soonLeave) {
+    const s = state.soldiers.find(x => x.id === sid);
+    const name = s ? s.name : '?';
+    const outTime = formatDT(soonLeave.outDate);
+    if (!confirm(`⏳ ${name} עתיד לצאת הביתה ב-${outTime}\nלשבץ ל${roleName} בכל זאת?`)) return false;
   }
   return true;
 }
@@ -214,10 +227,11 @@ function renderOutput() {
       m.sort((a, b) => (om[a.s.id] ?? 999) - (om[b.s.id] ?? 999));
     }
 
-    // כרטיס בבית
+    // כרטיס בבית — ידני + אוטומטי מיציאות
     if (r === 'home') {
-      const manualHome = m.map(mx => ({ s: mx.s, manual: true }));
+      const manualHome = m.map(mx => ({ s: mx.s }));
       const manualSids = new Set(manualHome.map(x => x.s.id));
+
       const autoOut = [];
       currentlyOut.forEach(sid => {
         if (!manualSids.has(sid)) {
@@ -225,6 +239,7 @@ function renderOutput() {
           if (s) autoOut.push(s);
         }
       });
+
       const autoSoon = [];
       goingHomeSoon.forEach(sid => {
         if (!manualSids.has(sid) && !currentlyOut.has(sid)) {
@@ -240,33 +255,44 @@ function renderOutput() {
         <div class="out-card-header"><span>🏠 בבית</span><span class="count">${total} אנשים</span></div>
         <table class="out-table"><tbody>`;
       let idx = 1;
+
+      // ידניים
       manualHome.forEach(({ s }) => {
-        html += `<tr draggable="true" data-sid="${s.id}" data-role="home"
-          ondragstart="onDragStart(event)" ondragover="onDragOver(event)"
-          ondragleave="onDragLeave(event)" ondrop="onDrop(event)" ondragend="onDragEnd(event)">
-          <td class="num">${idx++}</td><td class="rnk">${s.rank||''}</td>
+        html += `<tr><td class="num">${idx++}</td><td class="rnk">${s.rank||''}</td>
           <td class="nm">${s.name}</td></tr>`;
       });
+
+      // בחוץ כרגע — כתום
       autoOut.forEach(s => {
-        const leave = state.leaves.find(l => l.sid === s.id && new Date(l.outDate) <= new Date() && new Date(l.backDate) > new Date());
+        const leave = state.leaves.find(l =>
+          l.sid === s.id && new Date(l.outDate) <= new Date() && new Date(l.backDate) > new Date()
+        );
         const backStr = leave ? 'חזרה: ' + formatDT(leave.backDate) : '';
         html += `<tr><td class="num">${idx++}</td><td class="rnk">${s.rank||''}</td>
           <td class="nm" style="color:#e65100">🚶 ${s.name}
             <span style="font-size:9px;font-weight:400;color:#888;margin-right:4px">${backStr}</span>
           </td></tr>`;
       });
+
+      // עתידים לצאת — תכלת
       autoSoon.forEach(s => {
-        const leave = state.leaves.find(l => l.sid === s.id && new Date(l.outDate) > new Date() && new Date(l.outDate) <= new Date(new Date().getTime()+24*3600000));
+        const leave = state.leaves.find(l =>
+          l.sid === s.id &&
+          new Date(l.outDate) > new Date() &&
+          new Date(l.outDate) <= new Date(new Date().getTime() + 48 * 3600000)
+        );
         const outStr = leave ? 'יוצא: ' + formatDT(leave.outDate) : '';
         html += `<tr><td class="num">${idx++}</td><td class="rnk">${s.rank||''}</td>
           <td class="nm" style="color:#0288d1">⏳ ${s.name}
             <span style="font-size:9px;font-weight:400;color:#0288d1;margin-right:4px">${outStr}</span>
           </td></tr>`;
       });
+
       html += '</tbody></table></div>';
       return;
     }
 
+    // שאר הכרטיסים
     html += `<div class="out-card c-${r}">
       <div class="out-card-header">
         <span>${ROLE_EMOJI[r]} ${ROLE_LABEL[r]}</span>
@@ -288,6 +314,7 @@ function renderOutput() {
     html += '</tbody></table></div>';
   });
 
+  // ללא שיבוץ
   const free = state.soldiers.filter(s => state.assignments.filter(a => a.sid === s.id).length === 0);
   if (free.length) {
     html += `<div class="out-card c-unassigned">
@@ -299,6 +326,7 @@ function renderOutput() {
     html += '</tbody></table></div>';
   }
 
+  // לוז ש"ג
   const shagaSols = getShagaSoldiers();
   if (shagaSols.length) {
     html += `<div class="out-card-wide">
@@ -331,6 +359,7 @@ function renderOutput() {
     html += '</tbody></table></div></div>';
   }
 
+  // יציאות
   if (state.leaves.length) {
     html += `<div class="leaves-wide">
       <div class="out-card-header" style="background:#006064">
@@ -339,14 +368,24 @@ function renderOutput() {
       <div style="overflow-x:auto"><table class="leaves-tbl">
         <thead><tr><th>לוחם</th><th>יציאה</th><th>חזרה</th><th>ימים</th><th>סטטוס</th><th></th></tr></thead><tbody>`;
     state.leaves.slice().sort((a,b) => new Date(a.outDate)-new Date(b.outDate)).forEach(l => {
-      const s = state.soldiers.find(x => x.id === l.sid);
+      const s   = state.soldiers.find(x => x.id === l.sid);
       const out = isCurrentlyOut(l);
-      html += `<tr${out?' style="background:#fff0f0"':''}>
-        <td style="font-weight:700">${s?s.name:'?'}</td>
+      const now = new Date();
+      const soon = new Date(now.getTime() + 48 * 3600000);
+      const outDate = new Date(l.outDate);
+      const isSoon = !out && outDate > now && outDate <= soon;
+      const rowStyle = out ? 'background:#fff0f0' : isSoon ? 'background:#e3f2fd' : '';
+      const statusBadge = out
+        ? '<span class="out-badge">🚶 בחוץ</span>'
+        : isSoon
+          ? '<span class="out-badge" style="background:#e3f2fd;color:#0288d1;border-color:#0288d1">⏳ עתיד לצאת</span>'
+          : '<span class="out-badge">✅ חזר</span>';
+      html += `<tr${rowStyle ? ` style="${rowStyle}"` : ''}>
+        <td style="font-weight:700;color:${out?'#e65100':isSoon?'#0288d1':'#000'}">${s?s.name:'?'}</td>
         <td style="font-size:11px">${formatDT(l.outDate)}</td>
         <td style="font-size:11px">${formatDT(l.backDate)}</td>
         <td style="text-align:center"><span class="days-badge">${calcDays(l.outDate,l.backDate)}</span></td>
-        <td><span class="out-badge">${out?'🚶 בחוץ':'✅ חזר'}</span></td>
+        <td>${statusBadge}</td>
         <td><button class="btn btn-red btn-sm" onclick="removeLeave('${l.id}')">✕</button></td>
       </tr>`;
     });
