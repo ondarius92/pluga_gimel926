@@ -14,10 +14,18 @@ function addSoldier() {
   save(); renderAll();
 }
 
-function unassignToFree(aid) {
-  pushUndo();
-  state.assignments = state.assignments.filter(a => a.id !== aid);
-  save(); renderAll();
+function removeSoldier(sid) {
+  const s = state.soldiers.find(x => x.id === sid); if (!s) return;
+  document.getElementById('modal-h').textContent = '🗑 הסרת לוחם';
+  document.getElementById('modal-txt').textContent = `להסיר את ${s.name} מהמצבת? ניתן להוסיפו מחדש בכל עת.`;
+  document.getElementById('modal-confirm').onclick = () => {
+    pushUndo();
+    state.soldiers    = state.soldiers.filter(x => x.id !== sid);
+    state.assignments = state.assignments.filter(a => a.sid !== sid);
+    state.leaves      = state.leaves.filter(l => l.sid !== sid);
+    save(); closeModal(); renderAll();
+  };
+  document.getElementById('overlay').classList.add('open');
 }
 
 function openEditSoldier(sid) {
@@ -63,6 +71,12 @@ function assignSoldier() {
   save(); renderAll();
 }
 
+function unassignToFree(aid) {
+  pushUndo();
+  state.assignments = state.assignments.filter(a => a.id !== aid);
+  save(); renderAll();
+}
+
 function autoFillShaga() {
   const air = state.soldiers.filter(s => state.assignments.filter(a => a.sid === s.id).length === 0);
   if (!air.length) { alert('אין לוחמים ללא שיבוץ'); return; }
@@ -86,18 +100,14 @@ function onShagaChangeSafe(key, sel, dayIdx, isNight) {
   const prevVal = state.schedule[key] || '';
   const newVal  = sel.value;
 
-  // ידני — ללא אישור
   if (newVal === '__manual__') {
     state.schedule[key] = ''; save(); renderSchedInput();
     const inp = document.getElementById('mi_' + key);
     if (inp) inp.focus();
     return;
   }
-
-  // אותו ערך — כלום
   if (newVal === prevVal) return;
 
-  // ריקון שדה — ללא אישור
   if (newVal === '') {
     pushUndo();
     state.schedule[key] = '';
@@ -105,11 +115,10 @@ function onShagaChangeSafe(key, sel, dayIdx, isNight) {
     return;
   }
 
-  // החלפה בין לוחמים — בקש אישור
   if (prevVal !== '') {
-    const s = state.soldiers.find(x => x.id === newVal);
+    const s     = state.soldiers.find(x => x.id === newVal);
     const prevS = state.soldiers.find(x => x.id === prevVal);
-    const name = s ? s.name : '?';
+    const name     = s     ? s.name     : '?';
     const prevName = prevS ? prevS.name : '—';
     const shiftLabel = key.replace('day_','יום ').replace('_shift_',' משמרת ');
     if (!confirm(`להחליף משמרת ${shiftLabel}?\nמ: ${prevName}\nל: ${name}`)) {
@@ -117,7 +126,6 @@ function onShagaChangeSafe(key, sel, dayIdx, isNight) {
     }
   }
 
-  // בדיקת יציאות
   const s = newVal ? state.soldiers.find(x => x.id === newVal) : null;
   if (s && isNight && dayIdx !== undefined) {
     if (isLeavingMorning(s.id, dayIdx)) {
