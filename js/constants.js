@@ -45,4 +45,4 @@ const HAFK_LABEL_MAP = {
 
 function hafkLabel(v) { return HAFK_LABEL_MAP[v] || v; }
 
-const BANNED_NAMES = ['דבת','הילי','רותי','פרנהרא','סליה','פרנדו','מצוה','מצווה'];
+const BANNED_NAMES = [];
