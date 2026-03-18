@@ -93,7 +93,7 @@
     <span style="font-size:11px;color:#555;white-space:nowrap">חזרה:</span>
     <input type="datetime-local" id="leave-back" style="flex:1;margin-bottom:0;font-size:11px;padding:4px 6px">
   </div>
-  <button class="btn btn-teal btn-sm" style="width:100%;margin-bottom:6px" onclick="addLeave()">+ הוסף יציאה</button>
+  <button class="btn btn-teal btn-sm" style="width:100%;margin-bottom:6px" onclick="addLeaveConfirmed()">+ הוסף יציאה</button>
 
   <hr class="divider">
 
@@ -101,6 +101,7 @@
   <div class="btn-row">
     <button class="btn btn-indigo btn-sm" onclick="openPreview()">👁 תצוגה מקדימה</button>
     <button class="btn btn-purple btn-sm" onclick="genLink()">🔗 צור קישור</button>
+    <button id="undo-btn" class="btn btn-dark btn-sm" onclick="undo()" disabled style="opacity:0.4">↩️ בטל</button>
   </div>
   <div class="btn-row">
     <button class="btn btn-dark btn-sm" onclick="clearAll()">🗑 נקה הכל</button>
