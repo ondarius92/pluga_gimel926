@@ -113,7 +113,7 @@ function renderSchedInput() {
 
       if (soldiers.length) {
         html += `<select style="margin-bottom:0;padding:2px 5px;font-size:11px;width:100%"
-          onchange="onShagaChange('${key}',this,${d},${shift.isNight})">
+          onchange="onShagaChangeSafe('${key}',this,${d},${shift.isNight})">
           <option value="">—</option>`;
         soldiers.forEach(s => {
           const warn = shift.isNight && isLeavingMorning(s.id, d) ? '⚠️' : '';
@@ -148,11 +148,33 @@ function renderSchedInput() {
   body.innerHTML = html || '<div style="font-size:11px;color:#aaa">שבץ לוחמים לש"ג תחילה</div>';
 }
 
+// ── עזר: מי בבית עכשיו ומי עתיד לצאת ──
+function getHomeStatus() {
+  const now = new Date();
+  const soon = new Date(now.getTime() + 12 * 3600000); // 12 שעות קדימה
+  const currentlyOut  = new Set(); // בחוץ עכשיו
+  const goingHomeSoon = new Set(); // עתיד לצאת ב-12 שעות הקרובות
+
+  state.leaves.forEach(l => {
+    const outDate  = new Date(l.outDate);
+    const backDate = new Date(l.backDate);
+    if (outDate <= now && backDate > now) {
+      currentlyOut.add(l.sid);
+    } else if (outDate > now && outDate <= soon) {
+      goingHomeSoon.add(l.sid);
+    }
+  });
+
+  return { currentlyOut, goingHomeSoon };
+}
+
 function renderOutput() {
   const days   = parseInt(document.getElementById('sched-days').value) || 2;
   const grid   = document.getElementById('out-grid');
   const dateEl = document.getElementById('out-date');
   if (!dateEl.value) dateEl.value = new Date().toISOString().slice(0, 10);
+
+  const { currentlyOut, goingHomeSoon } = getHomeStatus();
 
   const groups = {};
   ROLES.forEach(r => { groups[r] = []; });
@@ -171,6 +193,70 @@ function renderOutput() {
       const om = {}; state.order[r].forEach((sid, i) => { om[sid] = i; });
       m.sort((a, b) => (om[a.s.id] ?? 999) - (om[b.s.id] ?? 999));
     }
+
+    // כרטיס בבית — מציג גם יוצאים מיציאות
+    if (r === 'home') {
+      // לוחמים ידניים בבית
+      const manualHome = m.map(mx => ({ s: mx.s, manual: true }));
+      // לוחמים שבחוץ כרגע (מיציאות) — שאינם כבר ברשימת בבית
+      const manualSids = new Set(manualHome.map(x => x.s.id));
+      const autoOut = [];
+      currentlyOut.forEach(sid => {
+        if (!manualSids.has(sid)) {
+          const s = state.soldiers.find(x => x.id === sid);
+          if (s) autoOut.push({ s, manual: false, status: 'out' });
+        }
+      });
+      // עתידים לצאת
+      const autoSoon = [];
+      goingHomeSoon.forEach(sid => {
+        if (!manualSids.has(sid) && !currentlyOut.has(sid)) {
+          const s = state.soldiers.find(x => x.id === sid);
+          if (s) autoSoon.push({ s, manual: false, status: 'soon' });
+        }
+      });
+
+      const total = manualHome.length + autoOut.length + autoSoon.length;
+      if (!total) return;
+
+      html += `<div class="out-card c-home">
+        <div class="out-card-header"><span>🏠 בבית</span><span class="count">${total} אנשים</span></div>
+        <table class="out-table"><tbody>`;
+
+      let idx = 1;
+      // ידניים
+      manualHome.forEach(({ s }) => {
+        html += `<tr draggable="true" data-sid="${s.id}" data-role="home"
+          ondragstart="onDragStart(event)" ondragover="onDragOver(event)"
+          ondragleave="onDragLeave(event)" ondrop="onDrop(event)" ondragend="onDragEnd(event)">
+          <td class="num">${idx++}</td>
+          <td class="rnk">${s.rank||''}</td>
+          <td class="nm">${s.name}</td></tr>`;
+      });
+      // בחוץ כרגע (מיציאות)
+      autoOut.forEach(({ s }) => {
+        const leave = state.leaves.find(l => l.sid === s.id && new Date(l.outDate) <= new Date() && new Date(l.backDate) > new Date());
+        const backStr = leave ? formatDT(leave.backDate) : '';
+        html += `<tr>
+          <td class="num">${idx++}</td>
+          <td class="rnk">${s.rank||''}</td>
+          <td class="nm" style="color:#e65100">🚶 ${s.name}<span style="font-size:9px;font-weight:400;color:#888;margin-right:4px">${backStr ? 'חזרה: '+backStr : ''}</span></td></tr>`;
+      });
+      // עתידים לצאת — תכלת
+      autoSoon.forEach(({ s }) => {
+        const leave = state.leaves.find(l => l.sid === s.id && new Date(l.outDate) > new Date() && new Date(l.outDate) <= new Date(new Date().getTime()+12*3600000));
+        const outStr = leave ? formatDT(leave.outDate) : '';
+        html += `<tr>
+          <td class="num">${idx++}</td>
+          <td class="rnk">${s.rank||''}</td>
+          <td class="nm" style="color:#0288d1">⏳ ${s.name}<span style="font-size:9px;font-weight:400;color:#0288d1;margin-right:4px">${outStr ? 'יוצא: '+outStr : ''}</span></td></tr>`;
+      });
+
+      html += '</tbody></table></div>';
+      return;
+    }
+
+    // כל שאר הכרטיסים — כרגיל
     html += `<div class="out-card c-${r}">
       <div class="out-card-header">
         <span>${ROLE_EMOJI[r]} ${ROLE_LABEL[r]}</span>
@@ -178,16 +264,23 @@ function renderOutput() {
       </div>
       <table class="out-table"><tbody>`;
     m.forEach((mx, i) => {
+      const isOut  = currentlyOut.has(mx.s.id);
+      const isSoon = goingHomeSoon.has(mx.s.id);
+      let nameStyle = '';
+      if (isOut)  nameStyle = 'color:#e65100';
+      if (isSoon) nameStyle = 'color:#0288d1';
+      const suffix = isOut ? ' 🚶' : isSoon ? ' ⏳' : '';
       html += `<tr draggable="true" data-sid="${mx.s.id}" data-role="${r}"
         ondragstart="onDragStart(event)" ondragover="onDragOver(event)"
         ondragleave="onDragLeave(event)" ondrop="onDrop(event)" ondragend="onDragEnd(event)">
         <td class="num">${i+1}</td>
         <td class="rnk">${mx.s.rank || ''}</td>
-        <td class="nm${mx.dual ? ' dual' : ''}">${mx.s.name}</td></tr>`;
+        <td class="nm${mx.dual ? ' dual' : ''}" style="${nameStyle}">${mx.s.name}${suffix}</td></tr>`;
     });
     html += '</tbody></table></div>';
   });
 
+  // ללא שיבוץ
   const free = state.soldiers.filter(s => state.assignments.filter(a => a.sid === s.id).length === 0);
   if (free.length) {
     html += `<div class="out-card c-unassigned">
@@ -199,6 +292,7 @@ function renderOutput() {
     html += '</tbody></table></div>';
   }
 
+  // לוז ש"ג
   const shagaSols = getShagaSoldiers();
   if (shagaSols.length) {
     html += `<div class="out-card-wide">
@@ -233,6 +327,7 @@ function renderOutput() {
     html += '</tbody></table></div></div>';
   }
 
+  // יציאות
   if (state.leaves.length) {
     html += `<div class="leaves-wide">
       <div class="out-card-header" style="background:#006064">
@@ -265,13 +360,13 @@ function renderOutput() {
 // ── תצוגה מקדימה ──
 function openPreview() {
   const days = parseInt(document.getElementById('sched-days').value) || 2;
-
-  // תפקידים להצגה — ללא ש"ג, בית, רופא, אחר
   const PREVIEW_ROLES = ['maplag','hafk1','hafk2','hafk3','hafkmap','hamal','truck','camp','rescue'];
   const ROLE_COLORS = {
     maplag:'#8b0000', hafk1:'#c55a00', hafk2:'#880e4f', hafk3:'#2e7d32',
     hafkmap:'#4527a0', hamal:'#6a1b9a', truck:'#5d4037', camp:'#1a6e32', rescue:'#d4890a'
   };
+
+  const { currentlyOut, goingHomeSoon } = getHomeStatus();
 
   const groups = {};
   ROLES.forEach(r => { groups[r] = []; });
@@ -280,7 +375,6 @@ function openPreview() {
     if (s) groups[a.role].push(s);
   });
 
-  // ── כרטיסי תפקידים ──
   let cardsHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px;margin-bottom:14px">';
   PREVIEW_ROLES.forEach(r => {
     const m = groups[r]; if (!m.length) return;
@@ -291,17 +385,21 @@ function openPreview() {
       </div>
       <table style="width:100%;border-collapse:collapse;background:#fff">`;
     m.forEach((s, i) => {
+      const isOut  = currentlyOut.has(s.id);
+      const isSoon = goingHomeSoon.has(s.id);
+      const color  = isOut ? '#e65100' : isSoon ? '#0288d1' : '#000';
+      const suffix = isOut ? ' 🚶' : isSoon ? ' ⏳' : '';
       cardsHtml += `<tr style="border-bottom:1px solid #eee">
         <td style="padding:4px 8px;font-size:10px;color:#aaa;width:18px">${i+1}</td>
         <td style="padding:4px 8px;font-size:10px;color:#666;width:45px">${s.rank||''}</td>
-        <td style="padding:4px 8px;font-size:11px;font-weight:700">${s.name}</td>
+        <td style="padding:4px 8px;font-size:11px;font-weight:700;color:${color}">${s.name}${suffix}</td>
       </tr>`;
     });
     cardsHtml += '</table></div>';
   });
   cardsHtml += '</div>';
 
-  // ── לוז ש"ג — 36 שעות קדימה ──
+  // לוז ש"ג 36 שעות
   const now = new Date();
   const schedStart = new Date(); schedStart.setHours(0,0,0,0);
   let shagaHtml = `<div style="border-radius:8px;overflow:hidden;border:2px solid #1a5a8a;margin-bottom:14px">
@@ -320,17 +418,16 @@ function openPreview() {
       const slotTime = new Date(schedStart);
       slotTime.setDate(slotTime.getDate() + d);
       slotTime.setHours(shift.h, 0, 0, 0);
-      if (slotTime < now) continue; // דלג על עבר
+      if (slotTime < now) continue;
 
       const key = `day_${d}_shift_${si}`;
       const val = state.schedule[key] || '';
       const sol = state.soldiers.find(x => x.id === val);
       const display = sol ? sol.name : (val || '—');
       const isNight = shift.isNight;
-      const dayLabel = DAY_NAMES[slotTime.getDay()];
 
       shagaHtml += `<tr style="background:${isNight?'#f0f0ff':'#fff'};border-bottom:1px solid #d8eaf5">
-        <td style="padding:4px 8px;font-size:10px;color:#555;white-space:nowrap">${dayLabel}</td>
+        <td style="padding:4px 8px;font-size:10px;color:#555">${DAY_NAMES[slotTime.getDay()]}</td>
         <td style="padding:4px 8px;font-size:10px;color:#1a5a8a;white-space:nowrap">${shift.label}${isNight?' 🌙':''}</td>
         <td style="padding:4px 8px;font-size:11px;font-weight:700;color:${isNight?'#4527a0':'#000'}">${display}</td>
       </tr>`;
@@ -339,7 +436,7 @@ function openPreview() {
   }
   shagaHtml += '</tbody></table></div>';
 
-  // ── טבלת סיורי חפ"ק ק. מלאכי ──
+  // לוז סיורים
   let tourHtml = `<div style="border-radius:8px;overflow:hidden;border:2px solid #4527a0;margin-bottom:14px">
     <div style="background:#4527a0;padding:6px 12px;font-size:12px;font-weight:700;color:#fff">🟣 לוז חפ"ק ק. מלאכי — ${days} ימים</div>
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;background:#fff">
@@ -357,12 +454,10 @@ function openPreview() {
       const tourLabel = tourVal ? hafkLabel(tourVal) : '—';
       let memberNames = '';
       if (tourVal) {
-        const members = state.assignments
+        memberNames = state.assignments
           .filter(a => a.role === tourVal)
           .map(a => state.soldiers.find(x => x.id === a.sid))
-          .filter(Boolean)
-          .map(s => s.name);
-        memberNames = members.join(', ');
+          .filter(Boolean).map(s => s.name).join(', ');
       }
       tourHtml += `<td style="padding:5px 8px;border-bottom:1px solid #e0d8f5;text-align:center">
         ${tourVal
@@ -375,7 +470,6 @@ function openPreview() {
   });
   tourHtml += '</tbody></table></div></div>';
 
-  // ── Overlay ──
   const wrapper = document.createElement('div');
   wrapper.id = 'preview-wrapper';
   wrapper.innerHTML = `
