@@ -19,22 +19,66 @@ function initFirebase() {
     db = firebase.database();
     firebaseReady = true;
 
-    db.ref('shabatzak/state').on('value', (snapshot) => {
+    // טעינה ראשונית מ-Firebase עם timeout
+    const loadTimeout = setTimeout(() => {
+      // אם Firebase לא ענה תוך 5 שניות — טען מ-localStorage
+      if (!firebaseLoaded) {
+        console.warn('Firebase timeout — loading from localStorage');
+        loadFromLocal();
+        renderAll();
+        showSync('💾 מקומי');
+      }
+    }, 5000);
+
+    let firebaseLoaded = false;
+
+    db.ref('shabatzak/state').once('value', (snapshot) => {
+      clearTimeout(loadTimeout);
+      firebaseLoaded = true;
       const remote = snapshot.val();
-      if (!remote) return;
-      if (remote._ts && remote._ts !== state._ts) {
+      if (remote && remote.soldiers && remote.soldiers.length) {
         state = remote;
         fixState();
         renderAll();
-        showSync('✅ מסונכרן');
+        showSync('🔥 נטען');
+      } else {
+        loadFromLocal();
+        renderAll();
       }
+
+      // אחרי טעינה ראשונית — הקשב לשינויים
+      db.ref('shabatzak/state').on('value', (snap) => {
+        const r = snap.val();
+        if (!r) return;
+        if (r._ts && r._ts !== state._ts) {
+          state = r;
+          fixState();
+          renderAll();
+          showSync('✅ מסונכרן');
+        }
+      });
     });
 
-    showSync('🔥 מחובר');
   } catch(e) {
     console.warn('Firebase error:', e);
+    loadFromLocal();
+    renderAll();
     showSync('💾 מקומי');
   }
+}
+
+function loadFromLocal() {
+  try {
+    const raw = localStorage.getItem('shabatzak12');
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (d && d.soldiers && d.soldiers.length) {
+        state = d; fixState(); mergeDefaults(); return;
+      }
+    }
+  } catch(e) {}
+  mergeDefaults();
+  applyDefaultAssignments();
 }
 
 function showSync(msg) {
@@ -89,6 +133,7 @@ function eid() { return 'e' + (++_ec) + Date.now(); }
 
 // ── LOAD ──
 function loadState() {
+  // נסה URL hash
   try {
     const h = window.location.hash.slice(1);
     if (h) {
@@ -102,19 +147,8 @@ function loadState() {
     }
   } catch(e) {}
 
-  try {
-    const raw = localStorage.getItem('shabatzak12');
-    if (raw) {
-      const d = JSON.parse(raw);
-      if (d && d.soldiers && d.soldiers.length) {
-        state = d; fixState(); mergeDefaults(); save(); return;
-      }
-    }
-  } catch(e) {}
-
-  mergeDefaults();
-  applyDefaultAssignments();
-  save();
+  // טען מ-localStorage עד שFirebase ייטען
+  loadFromLocal();
 }
 
 function fixState() {
@@ -126,7 +160,7 @@ function fixState() {
   if (!state._ts)         state._ts         = 0;
   _ec = (state.assignments || []).length + 2;
 
-  // Migration: איבגני → יבגני
+  // Migrations
   state.soldiers.forEach(s => {
     if (s.name === 'איבגני') {
       if (state.history[s.name]) {
@@ -135,7 +169,6 @@ function fixState() {
       }
       s.name = 'יבגני';
     }
-    // Migration: דניאל (חופלת) → דניאל לוי
     if (s.name === 'דניאל' && s.rank === 'חופלת') {
       if (state.history[s.name]) {
         state.history['דניאל לוי'] = state.history[s.name];
