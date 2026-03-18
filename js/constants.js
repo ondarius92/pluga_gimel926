@@ -1,16 +1,16 @@
-const ROLES = ['maplag','shaga','hafk1','hafk2','hafk3','hafkmap','hamal','truck','doctor','camp','rescue','home','other'];
+const ROLES = ['maplag','shaga','hafk1','hafk2','hafk3','hafkmap','hamal','truck','doctor','camp','rescue','konanut','other','home'];
 
 const ROLE_LABEL = {
   maplag:'מפל"ג', shaga:'ש"ג', hafk1:'חפ"ק 1', hafk2:'חפ"ק 2',
-  hafk3:'חפ"ק 3', hafkmap:'חפ"ק מ"פ', hamal:'חמ"ל', truck:'נהג משאית',
+  hafk3:'חפ"ק 3', hafkmap:'חפ"ק מפ', hamal:'חמ"ל', truck:'נהג משאית',
   doctor:'רופא פלוגתי', camp:'הגנת מחנה + חמל', rescue:'כוח חילוץ אוטובוס',
-  home:'בבית', other:'אחר'
+  konanut:'כוננות', other:'אחר', home:'בבית'
 };
 
 const ROLE_EMOJI = {
   maplag:'🎖️', shaga:'🔵', hafk1:'🟠', hafk2:'🔴', hafk3:'🟢',
   hafkmap:'🟣', hamal:'🟤', truck:'🚛', doctor:'🏥', camp:'🏕️',
-  rescue:'🚌', home:'🏠', other:'❔'
+  rescue:'🚌', konanut:'⚡', other:'❔', home:'🏠'
 };
 
 const EXCLUDE_FROM_SCHED = ['doctor','maplag'];
