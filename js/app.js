@@ -1,3 +1,26 @@
+// ── LOCK ──
+const LOCK_PASSWORD = '926';
+
+function lockApp() {
+  localStorage.setItem('shabatzak_locked', '1');
+  const ls = document.getElementById('lock-screen');
+  ls.style.display = 'flex';
+  setTimeout(() => { document.getElementById('unlock-input').focus(); }, 100);
+}
+
+function unlockApp() {
+  const pwd = document.getElementById('unlock-input').value;
+  if (pwd === LOCK_PASSWORD) {
+    localStorage.removeItem('shabatzak_locked');
+    document.getElementById('lock-screen').style.display = 'none';
+    document.getElementById('unlock-input').value = '';
+    document.getElementById('unlock-err').textContent = '';
+  } else {
+    document.getElementById('unlock-err').textContent = '❌ סיסמה שגויה';
+    document.getElementById('unlock-input').value = '';
+  }
+}
+
 // ── SOLDIERS ──
 
 function addSoldier() {
@@ -8,7 +31,6 @@ function addSoldier() {
   const newId = String(Date.now());
   state.soldiers.push({ id: newId, name, rank });
   ensureHist(name);
-  // הסר מרשימת המוסרים אם היה שם
   if (state.removedIds) state.removedIds = state.removedIds.filter(id => id !== newId);
   document.getElementById('in-name').value = '';
   document.getElementById('in-rank').value = '';
@@ -22,7 +44,6 @@ function removeSoldier(sid) {
   document.getElementById('modal-txt').textContent = `להסיר את ${s.name} מהשבצ"כ? אם יחזור — ניתן להוסיפו מחדש.`;
   document.getElementById('modal-confirm').onclick = () => {
     pushUndo();
-    // שמור את ה-ID ברשימת המוסרים כדי שלא יחזור מ-DEFAULT_SOLDIERS
     if (!state.removedIds) state.removedIds = [];
     if (!state.removedIds.includes(sid)) state.removedIds.push(sid);
     state.soldiers    = state.soldiers.filter(x => x.id !== sid);
@@ -249,4 +270,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initFirebase();
   renderAll();
   updateUndoBtn();
+
+  // בדוק מצב נעילה
+  if (localStorage.getItem('shabatzak_locked') === '1') {
+    lockApp();
+  }
 });
