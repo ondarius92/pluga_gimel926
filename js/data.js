@@ -52,12 +52,14 @@ const DEFAULT_SOLDIERS = [
   // רופא פלוגתי
   {id:'ds43', name:'פרננדו',      rank:'רופא'},
   // בבית
-  {id:'ds44', name:'טליה',        rank:''}
+  {id:'ds44', name:'טליה',        rank:''},
+  // חדש
+  {id:'ds57', name:'דניאל מ',     rank:''}
 ];
 
 const DEFAULT_ASSIGNMENTS = [
   {name:'אלונה',       role:'maplag'},
-  {name:'איבגני',      role:'maplag'},
+  {name:'יבגני',      role:'maplag'},
   {name:'חי',          role:'shaga'},
   {name:'ליאם',        role:'shaga'},
   {name:'צוף',         role:'shaga'},
