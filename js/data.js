@@ -1,7 +1,7 @@
 const DEFAULT_SOLDIERS = [
   // מפל"ג
   {id:'ds01', name:'אלונה',       rank:'רס"פית'},
-  {id:'ds02', name:'איבגני',      rank:'סרס"פ'},
+  {id:'ds02', name:'יבגני',      rank:'סרס"פ'},
   // ש"ג
   {id:'ds03', name:'חי',          rank:''},
   {id:'ds04', name:'ליאם',        rank:''},
