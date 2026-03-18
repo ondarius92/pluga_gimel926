@@ -1,4 +1,4 @@
-const BOLD_RANKS = ['קצין','מפקד','מ"מ','סמל','סמלת','מ"פ','סמ"פ'];
+const BOLD_RANKS = ['קצין','מפקד','מ"מ','סמל','סמלת','מ"פ','סמ"פ','רס"פ','סרס"פ','רופא'];
 
 function isBoldRank(rank) {
   if (!rank) return false;
