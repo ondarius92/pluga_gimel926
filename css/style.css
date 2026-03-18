@@ -22,18 +22,36 @@ select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 input:focus, select:focus { outline: none; border-color: #1a3a5c; }
 input::placeholder { color: #999; }
 
+/* ── מובייל — פונט קטן יותר ── */
+@media (max-width: 700px) {
+  body { font-size: 12px; }
+  input, select { font-size: 11px; padding: 5px 7px; margin-bottom: 4px; }
+  .sec-title { font-size: 10px; margin: 7px 0 3px; }
+  .btn { font-size: 11px; padding: 5px 9px; }
+  .btn-sm { font-size: 10px; padding: 3px 7px; }
+  .pill strong { font-size: 13px; }
+  .pill { font-size: 10px; padding: 2px 7px; }
+  .header h1 { font-size: 14px; }
+  .out-table td { font-size: 11px; padding: 4px 6px; }
+  .out-card-header { font-size: 11px; padding: 5px 9px; }
+  .chip { font-size: 11px; padding: 2px 6px; }
+  .pos-item { padding: 5px 8px; }
+  .sched-table td, .sched-table th { font-size: 10px; padding: 3px 5px; }
+  .leaves-tbl td, .leaves-tbl th { font-size: 10px; padding: 3px 5px; }
+  .out-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 7px; }
+}
+
 .btn-row { display: flex; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
 .btn { padding: 7px 12px; border-radius: 7px; border: none; cursor: pointer; font-size: 13px; font-weight: 700; font-family: Arial, Helvetica, sans-serif; white-space: nowrap; color: #fff; }
 .btn-blue { background: #1a3a5c; } .btn-orange { background: #7a4000; }
 .btn-green { background: #1a6e32; } .btn-dark { background: #333; }
 .btn-red { background: #8a1a1a; } .btn-purple { background: #4a4a8a; }
-.btn-teal { background: #006064; }
+.btn-teal { background: #006064; } .btn-indigo { background: #283593; }
 .btn-sm { padding: 4px 9px; font-size: 12px; border-radius: 6px; }
 
 .chip { background: #e8e8e8; border-radius: 6px; padding: 3px 8px; font-size: 12px; font-weight: 700; color: #000; display: flex; align-items: center; gap: 4px; }
 .chip .chip-x { cursor: pointer; color: #8a1a1a; font-size: 11px; }
 .chip .chip-edit { cursor: pointer; color: #1a3a5c; font-size: 11px; }
-.chip .chip-del { cursor: pointer; color: #555; font-size: 11px; }
 
 .pos-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
 .pos-item { background: #f5f5f5; border-radius: 8px; border: 1.5px solid #ddd; padding: 7px 10px; }
