@@ -240,3 +240,5 @@ function onShagaChangeSafe(key, sel, dayIdx, isNight) {
 
   pushUndo();
   st
+
+}
