@@ -198,7 +198,11 @@ function save() {
     }, 1000);
   }
 }
-
+function forceSave() {
+  save();
+  showSync('✅ נשמר!');
+  alert('השינויים נשמרו ועודכנו לכולם.');
+}
 // save עם undo
 function saveWithUndo() {
   pushUndo();
