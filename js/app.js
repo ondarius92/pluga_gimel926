@@ -158,5 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === e.currentTarget) closeEditModal();
   });
   loadState();
+  initFirebase();
   renderAll();
 });
