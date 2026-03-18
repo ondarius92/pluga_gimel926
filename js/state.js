@@ -19,9 +19,9 @@ function initFirebase() {
     db = firebase.database();
     firebaseReady = true;
 
-    // טעינה ראשונית מ-Firebase עם timeout
+    let firebaseLoaded = false;
+
     const loadTimeout = setTimeout(() => {
-      // אם Firebase לא ענה תוך 5 שניות — טען מ-localStorage
       if (!firebaseLoaded) {
         console.warn('Firebase timeout — loading from localStorage');
         loadFromLocal();
@@ -30,8 +30,6 @@ function initFirebase() {
       }
     }, 5000);
 
-    let firebaseLoaded = false;
-
     db.ref('shabatzak/state').once('value', (snapshot) => {
       clearTimeout(loadTimeout);
       firebaseLoaded = true;
@@ -39,6 +37,8 @@ function initFirebase() {
       if (remote && remote.soldiers && remote.soldiers.length) {
         state = remote;
         fixState();
+        mergeDefaults();
+        localStorage.setItem('shabatzak12', JSON.stringify(state));
         renderAll();
         showSync('🔥 נטען');
       } else {
@@ -46,13 +46,15 @@ function initFirebase() {
         renderAll();
       }
 
-      // אחרי טעינה ראשונית — הקשב לשינויים
+      // הקשב לשינויים בזמן אמת
       db.ref('shabatzak/state').on('value', (snap) => {
         const r = snap.val();
         if (!r) return;
         if (r._ts && r._ts !== state._ts) {
           state = r;
           fixState();
+          mergeDefaults();
+          localStorage.setItem('shabatzak12', JSON.stringify(state));
           renderAll();
           showSync('✅ מסונכרן');
         }
@@ -83,7 +85,10 @@ function loadFromLocal() {
 
 function showSync(msg) {
   const el = document.getElementById('sync-status');
-  if (el) { el.textContent = msg; setTimeout(() => { if(el) el.textContent = ''; }, 3000); }
+  if (el) {
+    el.textContent = msg;
+    setTimeout(() => { if(el) el.textContent = ''; }, 3000);
+  }
 }
 
 // ── STATE ──
@@ -133,7 +138,6 @@ function eid() { return 'e' + (++_ec) + Date.now(); }
 
 // ── LOAD ──
 function loadState() {
-  // נסה URL hash
   try {
     const h = window.location.hash.slice(1);
     if (h) {
@@ -146,8 +150,6 @@ function loadState() {
       }
     }
   } catch(e) {}
-
-  // טען מ-localStorage עד שFirebase ייטען
   loadFromLocal();
 }
 
@@ -176,6 +178,14 @@ function fixState() {
       }
       s.name = 'דניאל לוי';
     }
+  });
+
+  // הסר לוחמים ישנים שנמחקו
+  const OLD_NAMES = ['הילי','רותי','פרנהרא','סליה','דבת','פרנדו','מצוה'];
+  state.soldiers = state.soldiers.filter(s => !OLD_NAMES.includes(s.name));
+  state.assignments = state.assignments.filter(a => {
+    const s = state.soldiers.find(x => x.id === a.sid);
+    return !!s;
   });
 }
 
