@@ -11,14 +11,14 @@ function genLink() {
   fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(long))
     .then(r => r.text())
     .then(s => {
-      const url = s && s.includes('tinyurl.com') ? s : long;
+      const url = s && s.includes('tinyurl.com') ? s.trim() : long;
       document.getElementById('share-url').value = url;
       document.getElementById('share-status').textContent =
         s && s.includes('tinyurl.com') ? '✅ קישור קצר מוכן!' : '⚠️ קישור מלא';
     })
     .catch(() => {
       document.getElementById('share-url').value = long;
-      document.getElementById('share-status').textContent = '⚠️ אין חיבור';
+      document.getElementById('share-status').textContent = '⚠️ אין חיבור — קישור מלא';
     });
 }
 
@@ -40,7 +40,7 @@ function waLink() {
   fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(long))
     .then(r => r.text())
     .then(s => {
-      const url = s && s.includes('tinyurl.com') ? s : long;
+      const url = s && s.includes('tinyurl.com') ? s.trim() : long;
       window.open('https://wa.me/?text=' + encodeURIComponent('שבצק פלוגה 📋\n' + url), '_blank');
     })
     .catch(() => {
@@ -51,13 +51,42 @@ function waLink() {
 function loadLink() {
   const input = document.getElementById('load-url').value.trim();
   const msg   = document.getElementById('load-msg');
-  try {
-    const hash = input.includes('#') ? input.split('#')[1] : input;
-    const d = JSON.parse(decodeURIComponent(atob(hash)));
-    if (!d || !d.soldiers) throw new Error();
-    state = d; fixState(); save(); renderAll();
-    msg.innerHTML = '<span style="color:#1a6e32;font-weight:700">✅ נטען!</span>';
-  } catch(e) {
-    msg.innerHTML = '<span style="color:#8a1a1a;font-weight:700">❌ קישור לא תקין</span>';
+  if (!input) { msg.innerHTML = '<span style="color:#8a1a1a;font-weight:700">❌ הדבק קישור תחילה</span>'; return; }
+
+  msg.innerHTML = '<span style="color:#555">⏳ טוען...</span>';
+
+  function parseAndLoad(str) {
+    try {
+      const hash = str.includes('#') ? str.split('#')[1] : str;
+      const d = JSON.parse(decodeURIComponent(atob(hash.trim())));
+      if (!d || !d.soldiers || !d.soldiers.length) throw new Error('no soldiers');
+      pushUndo();
+      state = d;
+      fixState();
+      mergeDefaults();
+      save();
+      renderAll();
+      msg.innerHTML = '<span style="color:#1a6e32;font-weight:700">✅ נטען בהצלחה!</span>';
+      document.getElementById('load-url').value = '';
+    } catch(e) {
+      msg.innerHTML = '<span style="color:#8a1a1a;font-weight:700">❌ קישור לא תקין</span>';
+    }
+  }
+
+  // אם זה TinyURL — פתח ישירות דרך fetch
+  if (input.includes('tinyurl.com')) {
+    fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(input))
+      .then(r => r.json())
+      .then(data => {
+        // חפש את ה-hash בתוך ה-URL שהוחזר
+        const url = data.status?.url || input;
+        parseAndLoad(url);
+      })
+      .catch(() => {
+        // נסה ישירות — אולי הדפדפן יסמוך
+        parseAndLoad(input);
+      });
+  } else {
+    parseAndLoad(input);
   }
 }
