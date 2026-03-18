@@ -23,7 +23,7 @@
 
 <div class="app">
 
-<div class="input-col no-print">
+<div class="input-col no-print" id="input-col">
 
   <div class="sec-title">הוספת לוחם</div>
   <input type="text" id="in-name" placeholder="שם מלא" onkeydown="if(event.key==='Enter')addSoldier()">
@@ -36,7 +36,7 @@
 
   <div class="sec-title">שיבוץ לעמדה</div>
   <select id="in-soldier"><option value="">— בחר לוחם —</option></select>
- <select id="in-pos">
+  <select id="in-pos">
     <option value="maplag">מפל"ג</option>
     <option value="shaga">ש"ג</option>
     <option value="hafk1">חפ"ק 1</option>
@@ -56,7 +56,7 @@
     <button class="btn btn-blue" style="flex:1" onclick="assignSoldier()">+ שבץ</button>
     <button class="btn btn-orange" style="flex:1" onclick="autoFillShaga()">⚡ מלא פנויים לש"ג</button>
   </div>
-  <p style="font-size:11px;color:#888;margin-bottom:6px">✏️ ערוך &nbsp;|&nbsp; ✕ הסר ממשימה</p>
+  <p style="font-size:11px;color:#888;margin-bottom:6px">✏️ ערוך &nbsp;|&nbsp; ✕ הסר ממשימה &nbsp;|&nbsp; 🗑 הסר מהפלוגה</p>
 
   <div class="sec-title">שיבוצים נוכחיים</div>
   <div id="pos-list" class="pos-list"></div>
@@ -107,6 +107,7 @@
   <div class="btn-row">
     <button class="btn btn-dark btn-sm" onclick="clearAll()">🗑 נקה הכל</button>
     <button class="btn btn-green btn-sm no-print" onclick="window.print()">🖨️ הדפס</button>
+    <button class="btn btn-red btn-sm" onclick="lockApp()">🔒 נעל</button>
   </div>
   <div id="share-area" style="display:none" class="share-area">
     <div id="share-status" style="font-size:12px;font-weight:700;margin-bottom:3px;color:#1a6e32">⏳ מקצר...</div>
@@ -118,7 +119,7 @@
   </div>
   <div style="margin-top:8px">
     <input type="text" id="load-url" placeholder="הדבק קישור לטעינה..." style="margin-bottom:4px">
-    <button class="btn btn-green btn-sm" onclick="forceSave()" style="width:100%">☁️ שמור ועדכן</button>
+    <button class="btn btn-blue btn-sm" onclick="loadLink()" style="width:100%">טען שבצק</button>
     <div id="load-msg" style="font-size:12px;margin-top:4px"></div>
   </div>
 
@@ -126,12 +127,26 @@
 
 <div class="output-col">
   <div class="out-toolbar no-print">
-    <input type="text" id="out-title" value="שבצק פלוגה" style="font-size:16px;font-weight:700;border:none;border-bottom:2px solid #1a3a5c;border-radius:0;padding:3px 6px;flex:1;min-width:140px;margin-bottom:0">
+    <input type="text" id="out-title" value='שבצ"כ פלוגה ג&apos;' style="font-size:16px;font-weight:700;border:none;border-bottom:2px solid #1a3a5c;border-radius:0;padding:3px 6px;flex:1;min-width:140px;margin-bottom:0">
     <input type="date" id="out-date" style="max-width:145px;margin-bottom:0;font-size:12px;padding:4px 7px">
   </div>
   <div id="out-grid" class="out-grid"></div>
 </div>
 
+</div>
+
+<!-- מסך נעילה -->
+<div id="lock-screen" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#1a3a5c;z-index:1000;flex-direction:column;align-items:center;justify-content:center">
+  <div style="text-align:center;color:#fff;padding:30px">
+    <div style="font-size:48px;margin-bottom:16px">🔒</div>
+    <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">שבצ"כ פלוגה ג'</h2>
+    <p style="font-size:14px;opacity:.8;margin-bottom:24px">האפליקציה נעולה — תצוגה בלבד</p>
+    <input type="password" id="unlock-input" placeholder="הכנס סיסמה לפתיחה"
+      style="padding:10px 16px;border-radius:8px;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-size:14px;width:220px;text-align:center;margin-bottom:10px;display:block;margin:0 auto 10px"
+      onkeydown="if(event.key==='Enter')unlockApp()">
+    <button onclick="unlockApp()" style="background:#fff;color:#1a3a5c;border:none;border-radius:8px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px">פתח 🔓</button>
+    <div id="unlock-err" style="color:#ff8a80;font-size:12px;margin-top:8px"></div>
+  </div>
 </div>
 
 <div class="overlay" id="overlay">
