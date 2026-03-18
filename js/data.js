@@ -14,6 +14,7 @@ const DEFAULT_SOLDIERS = [
   {id:'ds11', name:'שחף',         rank:''},
   {id:'ds12', name:'דודו אבני',   rank:''},
   {id:'ds13', name:'רפי',         rank:''},
+  {id:'ds58', name:'מצווה', rank:''},
   // חמ"ל
   {id:'ds14', name:'און',         rank:''},
   {id:'ds15', name:'בתאל',        rank:''},
