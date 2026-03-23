@@ -13,8 +13,8 @@ body { font-family: Arial, Helvetica, sans-serif; background: #f0f2f5; min-heigh
 .input-col { background: #fff; border-left: 2px solid #ddd; padding: 12px; overflow-y: auto; max-height: calc(100vh - 48px); }
 .output-col { padding: 12px; overflow-y: auto; max-height: calc(100vh - 48px); }
 
-/* ── MOBILE LAYOUT ── */
-@media (max-width: 700px) {
+/* ── TABLET + MOBILE LAYOUT ── */
+@media (max-width: 1024px) {
   .app { display: flex; flex-direction: column; }
   .input-col { order: 2; max-height: none; border-left: none; border-top: 2px solid #ddd; padding: 8px; }
   .output-col { order: 1; max-height: none; padding: 6px; }
@@ -28,7 +28,7 @@ body { font-family: Arial, Helvetica, sans-serif; background: #f0f2f5; min-heigh
   .pill strong { font-size: 12px; }
   .pill { font-size: 9px; padding: 2px 6px; }
 
-  /* 3 עמודות במובייל */
+  /* 3 עמודות */
   .out-grid {
     grid-template-columns: repeat(3, 1fr) !important;
     gap: 4px !important;
