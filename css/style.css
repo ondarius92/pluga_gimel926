@@ -13,24 +13,47 @@ body { font-family: Arial, Helvetica, sans-serif; background: #f0f2f5; min-heigh
 .input-col { background: #fff; border-left: 2px solid #ddd; padding: 12px; overflow-y: auto; max-height: calc(100vh - 48px); }
 .output-col { padding: 12px; overflow-y: auto; max-height: calc(100vh - 48px); }
 
-/* ── MOBILE LAYOUT — טבלאות למעלה, פאנל קלט למטה ── */
+/* ── MOBILE LAYOUT ── */
 @media (max-width: 700px) {
-  .app {
-    display: flex;
-    flex-direction: column;
+  .app { display: flex; flex-direction: column; }
+  .input-col { order: 2; max-height: none; border-left: none; border-top: 2px solid #ddd; padding: 8px; }
+  .output-col { order: 1; max-height: none; padding: 6px; }
+
+  body { font-size: 11px; }
+  input, select { font-size: 10px; padding: 4px 6px; margin-bottom: 3px; }
+  .sec-title { font-size: 9px; margin: 5px 0 2px; }
+  .btn { font-size: 10px; padding: 4px 8px; }
+  .btn-sm { font-size: 9px; padding: 3px 6px; }
+  .header h1 { font-size: 12px; }
+  .pill strong { font-size: 12px; }
+  .pill { font-size: 9px; padding: 2px 6px; }
+
+  /* 3 עמודות במובייל */
+  .out-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 4px !important;
   }
-  .input-col {
-    order: 2;
-    max-height: none;
-    border-left: none;
-    border-top: 2px solid #ddd;
-    padding: 8px;
-  }
-  .output-col {
-    order: 1;
-    max-height: none;
-    padding: 8px;
-  }
+  .out-card-wide { grid-column: 1/-1; }
+  .leaves-wide { grid-column: 1/-1; }
+
+  .out-card-header { font-size: 9px; padding: 3px 5px; }
+  .out-card-header span.count { font-size: 8px; }
+  .out-table td { font-size: 9px; padding: 2px 4px; }
+  .out-table td.num { width: 14px; font-size: 8px; padding-right: 2px; }
+  .out-table td.rnk { width: 35px; font-size: 8px; }
+  .out-table td.nm { font-size: 10px; }
+
+  .chip { font-size: 9px; padding: 2px 4px; gap: 2px; }
+  .pos-item { padding: 4px 6px; }
+  .pos-item-name { font-size: 9px; }
+
+  .sched-table td, .sched-table th { font-size: 8px; padding: 2px 3px; }
+  .leaves-tbl td, .leaves-tbl th { font-size: 8px; padding: 2px 3px; }
+  .days-badge { font-size: 8px; padding: 1px 4px; }
+  .out-badge { font-size: 8px; padding: 1px 4px; }
+  .sched-input-row .time-lbl { min-width: 70px; font-size: 9px; }
+  .sched-input-row select, .sched-input-row input[type=text] { font-size: 9px; }
+  .out-toolbar { gap: 4px; margin-bottom: 6px; }
 }
 
 .sec-title { font-size: 10px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .5px; margin: 8px 0 4px; }
@@ -41,45 +64,6 @@ input, select { width: 100%; padding: 7px 9px; border: 1.5px solid #ccc; border-
 select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M0 0l5 7 5-7z' fill='%23555'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: left 8px center; padding-left: 24px; }
 input:focus, select:focus { outline: none; border-color: #1a3a5c; }
 input::placeholder { color: #999; }
-
-/* ── מובייל — פונט קטן + 2 עמודות ── */
-@media (max-width: 700px) {
-  body { font-size: 11px; }
-  input, select { font-size: 10px; padding: 4px 6px; margin-bottom: 3px; }
-  .sec-title { font-size: 9px; margin: 5px 0 2px; }
-  .btn { font-size: 10px; padding: 4px 8px; }
-  .btn-sm { font-size: 9px; padding: 3px 6px; }
-  .header h1 { font-size: 12px; }
-
-  /* 2 עמודות בטבלאות הפלט */
-  .out-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 5px;
-  }
-  .out-card-wide { grid-column: 1/-1; }
-  .leaves-wide { grid-column: 1/-1; }
-
-  .out-card-header { font-size: 10px; padding: 4px 7px; }
-  .out-card-header span.count { font-size: 9px; }
-  .out-table td { font-size: 10px; padding: 3px 5px; }
-  .out-table td.num { width: 16px; font-size: 9px; }
-  .out-table td.rnk { width: 40px; font-size: 9px; }
-
-  .chip { font-size: 10px; padding: 2px 5px; gap: 2px; }
-  .pos-item { padding: 4px 7px; }
-  .pos-item-name { font-size: 10px; }
-
-  .sched-table td, .sched-table th { font-size: 9px; padding: 2px 4px; }
-  .leaves-tbl td, .leaves-tbl th { font-size: 9px; padding: 2px 4px; }
-  .days-badge { font-size: 9px; padding: 1px 5px; }
-  .out-badge { font-size: 9px; padding: 1px 5px; }
-
-  .sched-input-row .time-lbl { min-width: 72px; font-size: 9px; }
-  .sched-input-row select, .sched-input-row input[type=text] { font-size: 9px; }
-
-  .out-toolbar { gap: 4px; margin-bottom: 6px; }
-  .out-toolbar input { font-size: 13px; }
-}
 
 .btn-row { display: flex; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
 .btn { padding: 7px 12px; border-radius: 7px; border: none; cursor: pointer; font-size: 13px; font-weight: 700; font-family: Arial, Helvetica, sans-serif; white-space: nowrap; color: #fff; }
@@ -92,6 +76,7 @@ input::placeholder { color: #999; }
 .chip { background: #e8e8e8; border-radius: 6px; padding: 3px 8px; font-size: 12px; font-weight: 700; color: #000; display: flex; align-items: center; gap: 4px; }
 .chip .chip-x { cursor: pointer; color: #8a1a1a; font-size: 11px; }
 .chip .chip-edit { cursor: pointer; color: #1a3a5c; font-size: 11px; }
+.chip .chip-del { cursor: pointer; font-size: 11px; }
 
 .pos-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
 .pos-item { background: #f5f5f5; border-radius: 8px; border: 1.5px solid #ddd; padding: 7px 10px; }
@@ -106,7 +91,7 @@ input::placeholder { color: #999; }
 .sched-input-row select, .sched-input-row input[type=text] { margin-bottom: 0; padding: 3px 6px; font-size: 11px; flex: 1; }
 
 .out-toolbar { display: flex; gap: 6px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
-.out-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.out-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
 .out-card { border-radius: 9px; overflow: hidden; border: 2px solid; break-inside: avoid; }
 .out-card-header { padding: 7px 12px; font-size: 12px; font-weight: 700; color: #fff; display: flex; justify-content: space-between; align-items: center; }
 .out-card-header span.count { opacity: .8; font-size: 11px; }
@@ -132,7 +117,6 @@ input::placeholder { color: #999; }
 .sched-table tr:nth-child(even) td { background: #f0f7fc; }
 .sched-table .night-row td { background: #f0f0ff !important; }
 .sched-table .tour-row td { background: #f0e8ff !important; }
-.sched-table .tour-row td:nth-child(odd) { color: #4527a0; font-weight: 700; white-space: nowrap; }
 .sched-table td.time-cell { color: #1a5a8a; white-space: nowrap; font-size: 11px; }
 
 .leaves-wide { grid-column: 1/-1; border-radius: 9px; overflow: hidden; border: 2px solid #006064; break-inside: avoid; }
