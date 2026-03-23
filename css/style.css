@@ -8,17 +8,36 @@ body { font-family: Arial, Helvetica, sans-serif; background: #f0f2f5; min-heigh
 .pill strong { display: block; font-size: 13px; font-weight: 700; }
 #sync-status { font-size: 10px; color: rgba(255,255,255,.8); }
 
-/* ── LAYOUT DESKTOP ── */
-.app { display: grid; grid-template-columns: 320px 1fr; min-height: calc(100vh - 48px); }
-.input-col { background: #fff; border-left: 2px solid #ddd; padding: 12px; overflow-y: auto; max-height: calc(100vh - 48px); }
-.output-col { padding: 12px; overflow-y: auto; max-height: calc(100vh - 48px); }
+/* ── LAYOUT — תמיד שתי עמודות ── */
+.app {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: calc(100vh - 48px);
+}
+.input-col {
+  background: #fff;
+  border-left: 2px solid #ddd;
+  padding: 10px;
+  overflow-y: auto;
+  max-height: calc(100vh - 48px);
+}
+.output-col {
+  padding: 10px;
+  overflow-y: auto;
+  max-height: calc(100vh - 48px);
+}
 
-/* ── TABLET + MOBILE LAYOUT ── */
-@media (max-width: 1024px) {
+/* ── פורטרט בלבד (טלפון זקוף צר) — עמודה אחת ── */
+@media (max-width: 500px) and (orientation: portrait) {
   .app { display: flex; flex-direction: column; }
   .input-col { order: 2; max-height: none; border-left: none; border-top: 2px solid #ddd; padding: 8px; }
   .output-col { order: 1; max-height: none; padding: 6px; }
+  .out-card-wide { grid-column: 1/-1; }
+  .leaves-wide { grid-column: 1/-1; }
+}
 
+/* ── פונטים קטנים בכל מכשיר קטן ── */
+@media (max-width: 1024px) {
   body { font-size: 11px; }
   input, select { font-size: 10px; padding: 4px 6px; margin-bottom: 3px; }
   .sec-title { font-size: 9px; margin: 5px 0 2px; }
@@ -27,31 +46,20 @@ body { font-family: Arial, Helvetica, sans-serif; background: #f0f2f5; min-heigh
   .header h1 { font-size: 12px; }
   .pill strong { font-size: 12px; }
   .pill { font-size: 9px; padding: 2px 6px; }
-
-  /* 3 עמודות */
-  .out-grid {
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 4px !important;
-  }
-  .out-card-wide { grid-column: 1/-1; }
-  .leaves-wide { grid-column: 1/-1; }
-
   .out-card-header { font-size: 9px; padding: 3px 5px; }
   .out-card-header span.count { font-size: 8px; }
   .out-table td { font-size: 9px; padding: 2px 4px; }
   .out-table td.num { width: 14px; font-size: 8px; padding-right: 2px; }
   .out-table td.rnk { width: 35px; font-size: 8px; }
   .out-table td.nm { font-size: 10px; }
-
   .chip { font-size: 9px; padding: 2px 4px; gap: 2px; }
   .pos-item { padding: 4px 6px; }
   .pos-item-name { font-size: 9px; }
-
   .sched-table td, .sched-table th { font-size: 8px; padding: 2px 3px; }
   .leaves-tbl td, .leaves-tbl th { font-size: 8px; padding: 2px 3px; }
   .days-badge { font-size: 8px; padding: 1px 4px; }
   .out-badge { font-size: 8px; padding: 1px 4px; }
-  .sched-input-row .time-lbl { min-width: 70px; font-size: 9px; }
+  .sched-input-row .time-lbl { min-width: 65px; font-size: 9px; }
   .sched-input-row select, .sched-input-row input[type=text] { font-size: 9px; }
   .out-toolbar { gap: 4px; margin-bottom: 6px; }
 }
@@ -91,7 +99,14 @@ input::placeholder { color: #999; }
 .sched-input-row select, .sched-input-row input[type=text] { margin-bottom: 0; padding: 3px 6px; font-size: 11px; flex: 1; }
 
 .out-toolbar { display: flex; gap: 6px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
-.out-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+
+/* ── גריד 3 עמודות תמיד ── */
+.out-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+
+@media (min-width: 1400px) {
+  .out-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+}
+
 .out-card { border-radius: 9px; overflow: hidden; border: 2px solid; break-inside: avoid; }
 .out-card-header { padding: 7px 12px; font-size: 12px; font-weight: 700; color: #fff; display: flex; justify-content: space-between; align-items: center; }
 .out-card-header span.count { opacity: .8; font-size: 11px; }
