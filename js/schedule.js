@@ -88,6 +88,7 @@ function genSched() {
       nightDays[sid].push(d2);
   });
 
+  // שבץ רק מיום 0 קדימה (לא אתמול)
   for (let d = 0; d < days; d++) {
     for (let si = 0; si < SHAGA_SHIFTS.length; si++) {
       const key = `day_${d}_shift_${si}`;
@@ -147,9 +148,7 @@ function genTourSched() {
   let lastGatIdx     = -1;
 
   for (let d = days - 1; d >= 0; d--) {
-    const t1 = state.schedule[`day_${d}_t1`];
     const t2 = state.schedule[`day_${d}_t2`];
-    const t3 = state.schedule[`day_${d}_t3`];
     const t4 = state.schedule[`day_${d}_t4`];
     if (t2 && lastMalachiIdx === -1) lastMalachiIdx = hafkRoles.indexOf(t2);
     if (t4 && lastGatIdx     === -1) lastGatIdx     = hafkRoles.indexOf(t4);
@@ -159,6 +158,7 @@ function genTourSched() {
   let malachiCursor = lastMalachiIdx > -1 ? (lastMalachiIdx + 1) % n : 0;
   let gatCursor     = lastGatIdx     > -1 ? (lastGatIdx     + 1) % n : 1 % n;
 
+  // שבץ רק מיום 0 קדימה
   for (let d = 0; d < days; d++) {
     const slots = [
       { malachi: 't1', gat: 't3' },
@@ -187,8 +187,11 @@ function genTourSched() {
 
 function clearSched() {
   Object.keys(state.schedule).forEach(k => {
-    if (k.includes('_shift_') || k.match(/day_\d+_t\d/)) delete state.schedule[k];
+    if (k.includes('_shift_') || k.match(/day_\d+_t\d/) || k.match(/day_-\d+_t\d/)) {
+      delete state.schedule[k];
+    }
   });
+  if (state.tourRosters) state.tourRosters = {};
   save(); renderAll();
 }
 
@@ -239,6 +242,6 @@ function onShagaChangeSafe(key, sel, dayIdx, isNight) {
   }
 
   pushUndo();
-  st
-
+  state.schedule[key] = newVal;
+  save(); renderSchedInput();
 }
