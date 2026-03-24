@@ -93,7 +93,7 @@ function renderPosList() {
     free.forEach(s => {
       html += `<div class="chip" style="background:#e0e0e0">${s.name}
         <span class="chip-edit" onclick="openEditSoldier('${s.id}')" title="ערוך">✏️</span>
-        <span class="chip-del" onclick="removeSoldier('${s.id}')" title="הסר מהפלוגה">🗑</span>
+        <span class="chip-x" onclick="removeSoldier('${s.id}')" title="הסר מהפלוגה">🗑</span>
       </div>`;
     });
     html += '</div></div>';
@@ -107,25 +107,31 @@ function renderSchedInput() {
   const body     = document.getElementById('sched-input');
   if (!body) return;
 
-  let html = '';
-  for (let d = 0; d < days; d++) {
-    html += `<div style="font-size:11px;font-weight:700;color:#1a3a5c;margin:${d>0?'10px':''}0 3px">${DAY_NAMES[d % 7]}</div>`;
+  // חשב offset — יום 0 = אתמול
+  const YESTERDAY_OFFSET = -1;
+  const totalDays = days + 1; // אתמול + ימים קדימה
 
+  let html = '';
+  for (let di = 0; di < totalDays; di++) {
+    const d = di + YESTERDAY_OFFSET; // d = -1 לאתמול, 0 להיום, 1 מחר וכו'
+    const isYesterday = d < 0;
+    const dayLabel = isYesterday
+      ? `<span style="color:#aaa">📅 אתמול</span>`
+      : d === 0 ? '📅 היום' : DAY_NAMES[di % 7];
+
+    html += `<div style="font-size:11px;font-weight:700;color:${isYesterday?'#aaa':'#1a3a5c'};margin:${di>0?'10px':''}0 3px;background:${isYesterday?'#f5f5f5':'transparent'};padding:2px 4px;border-radius:4px">${dayLabel}</div>`;
+
+    // ש"ג
     SHAGA_SHIFTS.forEach((shift, si) => {
       const key = `day_${d}_shift_${si}`;
       const val = state.schedule[key] || '';
       const isManual = val && !soldiers.find(s => s.id === val);
 
-      html += `<div class="sched-input-row${shift.isNight ? ' night-row' : ''}">
+      html += `<div class="sched-input-row${shift.isNight ? ' night-row' : ''}" style="${isYesterday?'opacity:0.5;pointer-events:none':''}">
         <span class="time-lbl">${shift.label}${shift.isNight ? ' 🌙' : ''}</span>
-        <div style="flex:1" draggable="true"
-          ondragstart="onSchedDragStart(event,'${key}')"
-          ondragover="onSchedDragOver(event)"
-          ondragleave="onSchedDragLeave(event)"
-          ondragend="onSchedDragEnd(event)"
-          ondrop="onSchedDrop(event,'${key}')">`;
+        <div style="flex:1">`;
 
-      if (soldiers.length) {
+      if (soldiers.length && !isYesterday) {
         html += `<select style="margin-bottom:0;padding:2px 5px;font-size:11px;width:100%"
           onchange="onShagaChangeSafe('${key}',this,${d},${shift.isNight})">
           <option value="">—</option>`;
@@ -140,31 +146,170 @@ function renderSchedInput() {
             value="${val.replace(/"/g, '&quot;')}"
             oninput="state.schedule['${key}']=this.value;save()">`;
       } else {
-        html += `<input type="text"
-          style="margin-bottom:0;padding:2px 5px;font-size:11px;width:100%"
-          placeholder="שם..." value="${val.replace(/"/g, '&quot;')}"
-          oninput="state.schedule['${key}']=this.value;save()">`;
+        // אתמול — תצוגה בלבד
+        const sol = state.soldiers.find(x => x.id === val);
+        const display = sol ? sol.name : (val || '—');
+        html += `<div style="font-size:11px;font-weight:700;padding:2px 5px;color:#888">${display}</div>`;
       }
       html += '</div></div>';
     });
 
+    // סיורים
     const tourSlots = [
-      { key:`day_${d}_t1`, label:'🟣 ק. מלאכי יום 10:00–22:00',  color:'#4527a0' },
-      { key:`day_${d}_t2`, label:'🟣 ק. מלאכי לילה 22:00–10:00', color:'#4527a0' },
-      { key:`day_${d}_t3`, label:'🔵 ק. גת יום 10:00–22:00',      color:'#1a5a8a' },
-      { key:`day_${d}_t4`, label:'🔵 ק. גת לילה 22:00–10:00',     color:'#1a5a8a' }
+      { key:`day_${d}_t1`, label:'🟣 ק. מלאכי יום',  color:'#4527a0' },
+      { key:`day_${d}_t2`, label:'🟣 ק. מלאכי לילה', color:'#4527a0' },
+      { key:`day_${d}_t3`, label:'🔵 ק. גת יום',      color:'#1a5a8a' },
+      { key:`day_${d}_t4`, label:'🔵 ק. גת לילה',     color:'#1a5a8a' }
     ];
+
     tourSlots.forEach(ts => {
       const val = state.schedule[ts.key] || '';
-      html += `<div class="sched-input-row tour-row">
-        <span class="time-lbl" style="color:${ts.color};min-width:140px">${ts.label}</span>
-        <select style="margin-bottom:0;padding:2px 5px;font-size:11px;flex:1"
-          onchange="state.schedule['${ts.key}']=this.value;save();renderOutput()">`;
-      TOUR_OPT.forEach(opt => { html += `<option value="${opt.v}"${val === opt.v ? ' selected' : ''}>${opt.l}</option>`; });
-      html += '</select></div>';
+      const roster = getTourRoster(ts.key);
+      const hasCustom = state.tourRosters && state.tourRosters[ts.key];
+
+      if (isYesterday) {
+        // אתמול — תצוגה בלבד
+        html += `<div class="sched-input-row tour-row" style="opacity:0.5">
+          <span class="time-lbl" style="color:${ts.color};min-width:120px;font-size:9px">${ts.label}</span>
+          <span style="font-size:10px;font-weight:700;color:${ts.color}">${val ? hafkLabel(val) : '—'}</span>
+        </div>`;
+      } else {
+        html += `<div style="margin-bottom:3px;background:#fafafa;border-radius:6px;border:1px solid #eee;padding:4px 6px">
+          <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+            <span style="color:${ts.color};font-size:9px;font-weight:700;min-width:120px">${ts.label}</span>
+            <select style="margin-bottom:0;padding:2px 5px;font-size:10px;flex:1;min-width:80px"
+              onchange="onTourHafkChange('${ts.key}',this.value)">`;
+        TOUR_OPT.forEach(opt => { html += `<option value="${opt.v}"${val === opt.v ? ' selected' : ''}>${opt.l}</option>`; });
+        html += `</select>
+            <button onclick="openTourRosterEdit('${ts.key}')"
+              style="background:${hasCustom?ts.color:'#888'};color:#fff;border:none;border-radius:5px;padding:2px 7px;font-size:9px;cursor:pointer;white-space:nowrap">
+              ✏️ ${hasCustom ? roster.length + ' לוחמים' : 'ברירת מחדל'}
+            </button>
+          </div>`;
+
+        if (val && roster.length) {
+          html += `<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:3px">`;
+          roster.forEach(s => {
+            html += `<span style="background:${ts.color};color:#fff;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700">${s.name}</span>`;
+          });
+          html += `</div>`;
+        }
+        html += `</div>`;
+      }
     });
   }
   body.innerHTML = html || '<div style="font-size:11px;color:#aaa">שבץ לוחמים לש"ג תחילה</div>';
+}
+
+function onTourHafkChange(key, val) {
+  pushUndo();
+  state.schedule[key] = val;
+  // אם מחליפים חפ"ק — נקה הרכב מותאם אישית
+  if (state.tourRosters && state.tourRosters[key]) {
+    delete state.tourRosters[key];
+  }
+  save(); renderSchedInput(); renderOutput();
+}
+
+function openTourRosterEdit(tourKey) {
+  const val = state.schedule[tourKey];
+  if (!val) { alert('בחר חפ"ק תחילה'); return; }
+
+  const roster = getTourRoster(tourKey);
+  const rosterSids = new Set(roster.map(s => s.id));
+
+  // כל חברי החפ"ק האפשריים
+  const sr = ['קצין','מפקד','מ"מ','סמל','סמלת','מ"פ','סמ"פ','רס"פ','סרס"פ','רופא'];
+  const allHafk = state.assignments
+    .filter(a => a.role === val)
+    .map(a => state.soldiers.find(x => x.id === a.sid))
+    .filter(Boolean);
+
+  // גם לוחמים אחרים מהפלוגה
+  const others = state.soldiers
+    .filter(s => !allHafk.find(h => h.id === s.id))
+    .filter(s => !(s.rank && sr.some(r => s.rank.includes(r))))
+    .sort((a,b) => a.name.localeCompare(b.name,'he'));
+
+  const tourLabels = {
+    t1:'ק. מלאכי יום', t2:'ק. מלאכי לילה',
+    t3:'ק. גת יום',    t4:'ק. גת לילה'
+  };
+  const tKey = tourKey.split('_').pop();
+  const label = tourLabels[tKey] || tourKey;
+
+  let checkboxHtml = `<div style="font-size:11px;font-weight:700;color:#555;margin-bottom:6px">חברי ${hafkLabel(val)} — ${label}</div>`;
+
+  checkboxHtml += `<div style="max-height:250px;overflow-y:auto">`;
+
+  if (allHafk.length) {
+    checkboxHtml += `<div style="font-size:10px;color:#aaa;margin-bottom:4px">חברי החפ"ק</div>`;
+    allHafk.forEach(s => {
+      const checked = rosterSids.has(s.id) ? 'checked' : '';
+      checkboxHtml += `<label style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;cursor:pointer">
+        <input type="checkbox" value="${s.id}" ${checked} style="width:16px;height:16px">
+        <span>${s.name}${s.rank ? ` <span style="color:#888;font-size:10px">${s.rank}</span>` : ''}</span>
+      </label>`;
+    });
+  }
+
+  if (others.length) {
+    checkboxHtml += `<div style="font-size:10px;color:#aaa;margin:8px 0 4px">לוחמים נוספים</div>`;
+    others.forEach(s => {
+      const checked = rosterSids.has(s.id) ? 'checked' : '';
+      checkboxHtml += `<label style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;cursor:pointer">
+        <input type="checkbox" value="${s.id}" ${checked} style="width:16px;height:16px">
+        <span>${s.name}${s.rank ? ` <span style="color:#888;font-size:10px">${s.rank}</span>` : ''}</span>
+      </label>`;
+    });
+  }
+
+  checkboxHtml += `</div>`;
+
+  const wrapper = document.createElement('div');
+  wrapper.id = 'tour-roster-wrapper';
+  wrapper.innerHTML = `
+    <div id="tour-roster-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:600;display:flex;align-items:center;justify-content:center;padding:16px">
+      <div style="background:#fff;border-radius:12px;width:100%;max-width:380px;overflow:hidden;max-height:90vh;display:flex;flex-direction:column">
+        <div style="background:#1a3a5c;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+          <h3 style="color:#fff;font-size:14px;font-weight:700">✏️ עריכת הרכב סיור</h3>
+          <button onclick="closeTourRosterEdit()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer">✕</button>
+        </div>
+        <div style="padding:14px;overflow-y:auto;flex:1" id="tour-roster-body">
+          ${checkboxHtml}
+        </div>
+        <div style="padding:10px 14px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end">
+          <button onclick="resetTourRoster('${tourKey}')" style="background:#888;color:#fff;border:none;border-radius:7px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:700">↺ ברירת מחדל</button>
+          <button onclick="saveTourRoster('${tourKey}')" style="background:#1a3a5c;color:#fff;border:none;border-radius:7px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:700">✅ שמור</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(wrapper);
+}
+
+function saveTourRoster(tourKey) {
+  const checkboxes = document.querySelectorAll('#tour-roster-body input[type=checkbox]');
+  const selected = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+  pushUndo();
+  setTourRoster(tourKey, selected);
+  save();
+  closeTourRosterEdit();
+  renderSchedInput();
+  renderOutput();
+}
+
+function resetTourRoster(tourKey) {
+  pushUndo();
+  if (state.tourRosters) delete state.tourRosters[tourKey];
+  save();
+  closeTourRosterEdit();
+  renderSchedInput();
+  renderOutput();
+}
+
+function closeTourRosterEdit() {
+  const el = document.getElementById('tour-roster-wrapper');
+  if (el) el.remove();
 }
 
 function getHomeStatus() {
@@ -198,14 +343,13 @@ function warnIfOut(sid, roleName) {
 }
 
 function renderOutput() {
-  autoCleanReturnedHome();
-
   const days   = parseInt(document.getElementById('sched-days').value) || 2;
   const grid   = document.getElementById('out-grid');
   const dateEl = document.getElementById('out-date');
   if (!dateEl.value) dateEl.value = new Date().toISOString().slice(0, 10);
 
   const { currentlyOut, goingHomeSoon } = getHomeStatus();
+  autoCleanReturnedHome();
 
   const groups = {};
   ROLES.forEach(r => { groups[r] = []; });
@@ -304,28 +448,45 @@ function renderOutput() {
     html += '</tbody></table></div>';
   }
 
+  // לוז ש"ג + סיורים — אתמול + ימים קדימה
   const shagaSols = getShagaSoldiers();
   if (shagaSols.length) {
+    const totalDisplayDays = days + 1; // אתמול + ימים קדימה
     html += `<div class="out-card-wide">
-      <div class="out-card-header"><span>🕐 לוז ש"ג וסיורים</span><span class="count">${days} ימים</span></div>
+      <div class="out-card-header"><span>🕐 לוז ש"ג וסיורים</span><span class="count">${days} ימים + אתמול</span></div>
       <div style="overflow-x:auto"><table class="sched-table"><thead><tr>`;
-    for (let d = 0; d < days; d++) html += `<th colspan="2" style="text-align:center">${DAY_NAMES[d%7]}</th>`;
+
+    for (let di = 0; di < totalDisplayDays; di++) {
+      const d = di - 1;
+      const isYest = d < 0;
+      const label = isYest ? 'אתמול' : d === 0 ? 'היום' : DAY_NAMES[di % 7];
+      html += `<th colspan="2" style="text-align:center;${isYest?'color:#aaa;background:#f5f5f5':''}">📅 ${label}</th>`;
+    }
     html += '</tr><tr>';
-    for (let d2 = 0; d2 < days; d2++) html += '<th>שעות</th><th>לוחם</th>';
+    for (let di = 0; di < totalDisplayDays; di++) {
+      const isYest = di === 0;
+      html += `<th style="${isYest?'color:#aaa;background:#f5f5f5':''}">שעות</th><th style="${isYest?'color:#aaa;background:#f5f5f5':''}">לוחם</th>`;
+    }
     html += '</tr></thead><tbody>';
 
     SHAGA_SHIFTS.forEach((shift, si) => {
-      html += `<tr${shift.isNight ? ' class="night-row"' : ''}>`;
-      for (let d3 = 0; d3 < days; d3++) {
-        const key = `day_${d3}_shift_${si}`;
+      html += '<tr>';
+      for (let di = 0; di < totalDisplayDays; di++) {
+        const d = di - 1;
+        const isYest = d < 0;
+        const key = `day_${d}_shift_${si}`;
         const val = state.schedule[key] || '';
         const sol = state.soldiers.find(x => x.id === val);
         const display = sol ? sol.name : (val || '<span style="color:#ccc">—</span>');
-        html += `<td class="time-cell">${shift.label}${shift.isNight ? ' 🌙' : ''}</td><td style="font-weight:700">${display}</td>`;
+        const nightClass = shift.isNight ? ' class="night-row"' : '';
+        const yestStyle = isYest ? 'color:#aaa;background:#f5f5f5' : '';
+        html += `<td class="time-cell" style="${yestStyle}">${shift.label}${shift.isNight?' 🌙':''}</td>
+                 <td style="font-weight:700;${yestStyle}">${display}</td>`;
       }
       html += '</tr>';
     });
 
+    // סיורים
     const tourRows = [
       { keys: ['t1'], label: '🟣 ק. מלאכי יום',  color: '#4527a0', bg: '#f0e8ff' },
       { keys: ['t2'], label: '🟣 ק. מלאכי לילה', color: '#4527a0', bg: '#e8e0ff' },
@@ -334,24 +495,23 @@ function renderOutput() {
     ];
 
     tourRows.forEach(tr => {
-      html += `<tr style="background:${tr.bg}">`;
-      for (let d4 = 0; d4 < days; d4++) {
-        const key = `day_${d4}_${tr.keys[0]}`;
+      html += '<tr>';
+      for (let di = 0; di < totalDisplayDays; di++) {
+        const d = di - 1;
+        const isYest = d < 0;
+        const key = `day_${d}_${tr.keys[0]}`;
         const val = state.schedule[key] || '';
+        const roster = getTourRoster(key);
         const label = val ? hafkLabel(val) : '<span style="color:#ccc">—</span>';
-        let members = '';
-        if (val) {
-          const sr = ['קצין','מפקד','מ"מ','סמל','סמלת','מ"פ','סמ"פ','רס"פ','סרס"פ','רופא'];
-          members = state.assignments
-            .filter(a => a.role === val)
-            .map(a => state.soldiers.find(x => x.id === a.sid))
-            .filter(Boolean)
-            .filter(s => !(s.rank && sr.some(r => s.rank.includes(r))))
-            .map(s => s.name).join(', ');
-        }
-        html += `<td style="color:${tr.color};font-weight:700;white-space:nowrap;font-size:10px">${tr.label}</td>
-          <td style="font-weight:700;font-size:11px">
-            ${val ? `<div style="color:${tr.color}">${label}</div><div style="font-size:9px;color:#666;font-weight:400">${members}</div>` : '<span style="color:#ccc">—</span>'}
+        const members = roster.map(s => s.name).join(', ');
+        const yestStyle = isYest ? 'opacity:0.5;background:#f5f5f5' : `background:${tr.bg}`;
+
+        html += `<td style="color:${tr.color};font-weight:700;font-size:10px;${yestStyle}">${tr.label}</td>
+          <td style="font-weight:700;font-size:11px;${yestStyle}">
+            ${val
+              ? `<div style="color:${tr.color}">${label}</div>
+                 <div style="font-size:9px;color:#666;font-weight:400">${members}</div>`
+              : '<span style="color:#ccc">—</span>'}
           </td>`;
       }
       html += '</tr>';
@@ -476,7 +636,7 @@ function openPreview() {
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;background:#fff">
       <thead><tr style="background:#ede7f6">
         <th style="padding:5px 8px;font-size:10px;color:#333;text-align:right">סיור</th>`;
-  for (let d = 0; d < days; d++) tourHtml += `<th style="padding:5px 8px;font-size:10px;color:#333;text-align:center">${DAY_NAMES[d%7]}</th>`;
+  for (let d = 0; d < days; d++) tourHtml += `<th style="padding:5px 8px;font-size:10px;color:#333;text-align:center">${d===0?'היום':DAY_NAMES[d%7]}</th>`;
   tourHtml += '</tr></thead><tbody>';
 
   const previewTourRows = [
@@ -492,16 +652,8 @@ function openPreview() {
       const key = `day_${d}_${tr.key}`;
       const val = state.schedule[key] || '';
       const label = val ? hafkLabel(val) : '—';
-      let members = '';
-      if (val) {
-        const sr = ['קצין','מפקד','מ"מ','סמל','סמלת','מ"פ','סמ"פ','רס"פ','סרס"פ','רופא'];
-        members = state.assignments
-          .filter(a => a.role === val)
-          .map(a => state.soldiers.find(x => x.id === a.sid))
-          .filter(Boolean)
-          .filter(s => !(s.rank && sr.some(r => s.rank.includes(r))))
-          .map(s => s.name).join(', ');
-      }
+      const roster = getTourRoster(key);
+      const members = roster.map(s => s.name).join(', ');
       tourHtml += `<td style="padding:5px 8px;border-bottom:1px solid #e0d8f5;text-align:center">
         ${val
           ? `<div style="font-weight:700;font-size:11px;color:${tr.color}">${label}</div>
