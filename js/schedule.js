@@ -1,3 +1,25 @@
+// ── עזר: הרכב לוחמים לסיור ──
+function getTourRoster(tourKey) {
+  if (state.tourRosters && state.tourRosters[tourKey]) {
+    return state.tourRosters[tourKey]
+      .map(sid => state.soldiers.find(x => x.id === sid))
+      .filter(Boolean);
+  }
+  const role = state.schedule[tourKey];
+  if (!role) return [];
+  const sr = ['קצין','מפקד','מ"מ','סמל','סמלת','מ"פ','סמ"פ','רס"פ','סרס"פ','רופא'];
+  return state.assignments
+    .filter(a => a.role === role)
+    .map(a => state.soldiers.find(x => x.id === a.sid))
+    .filter(Boolean)
+    .filter(s => !(s.rank && sr.some(r => s.rank.includes(r))));
+}
+
+function setTourRoster(tourKey, sids) {
+  if (!state.tourRosters) state.tourRosters = {};
+  state.tourRosters[tourKey] = sids;
+}
+
 // ── SCHEDULE ──
 
 const SENIOR_RANKS_LIST = ['קצין','מפקד','מ"מ','סמל','סמלת','מ"פ','סמ"פ','רס"פ','סרס"פ','רופא'];
@@ -88,7 +110,6 @@ function genSched() {
       nightDays[sid].push(d2);
   });
 
-  // שבץ רק מיום 0 קדימה (לא אתמול)
   for (let d = 0; d < days; d++) {
     for (let si = 0; si < SHAGA_SHIFTS.length; si++) {
       const key = `day_${d}_shift_${si}`;
@@ -158,7 +179,6 @@ function genTourSched() {
   let malachiCursor = lastMalachiIdx > -1 ? (lastMalachiIdx + 1) % n : 0;
   let gatCursor     = lastGatIdx     > -1 ? (lastGatIdx     + 1) % n : 1 % n;
 
-  // שבץ רק מיום 0 קדימה
   for (let d = 0; d < days; d++) {
     const slots = [
       { malachi: 't1', gat: 't3' },
@@ -187,7 +207,7 @@ function genTourSched() {
 
 function clearSched() {
   Object.keys(state.schedule).forEach(k => {
-    if (k.includes('_shift_') || k.match(/day_\d+_t\d/) || k.match(/day_-\d+_t\d/)) {
+    if (k.includes('_shift_') || k.match(/day_-?\d+_t\d/)) {
       delete state.schedule[k];
     }
   });
